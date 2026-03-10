@@ -1,0 +1,90 @@
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
+import { NavLink } from "@/components/NavLink";
+import {
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
+} from "@/components/ui/sidebar";
+import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+
+const adminNav = [
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Tasks", url: "/tasks", icon: ListTodo },
+  { title: "Employees", url: "/employees", icon: Users },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Settings", url: "/settings", icon: Settings },
+];
+
+const employeeNav = [
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "My Tasks", url: "/tasks", icon: ListTodo },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Settings", url: "/settings", icon: Settings },
+];
+
+export function AppSidebar() {
+  const { user, logout } = useAuth();
+  const { theme, toggle } = useTheme();
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
+  const navigate = useNavigate();
+  const items = user?.role === "admin" ? adminNav : employeeNav;
+
+  const handleLogout = () => { logout(); navigate("/login"); };
+
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <div className="flex items-center gap-2 px-2 py-1">
+          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+            <Activity className="h-5 w-5 text-primary-foreground" />
+          </div>
+          {!collapsed && <span className="font-bold text-lg text-foreground">WorkTrack</span>}
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map(item => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild tooltip={item.title}>
+                    <NavLink to={item.url} end={item.url === "/dashboard"} className="hover:bg-muted/50" activeClassName="bg-muted text-primary font-medium">
+                      <item.icon className="h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <Separator className="mb-2" />
+        <div className="flex flex-col gap-1 px-1">
+          <Button variant="ghost" size="sm" className="justify-start gap-2 h-8" onClick={toggle}>
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {!collapsed && <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>}
+          </Button>
+          <Button variant="ghost" size="sm" className="justify-start gap-2 h-8 text-destructive hover:text-destructive" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" />
+            {!collapsed && <span>Logout</span>}
+          </Button>
+        </div>
+        {!collapsed && user && (
+          <div className="px-3 py-2 mt-1">
+            <p className="text-sm font-medium truncate">{user.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+          </div>
+        )}
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
