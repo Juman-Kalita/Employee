@@ -1,16 +1,31 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTasks, getEmployees } from "@/lib/store";
+import { getTasks } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Clock, ListTodo, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
+import { Task } from "@/lib/types";
 
 const COLORS = ["hsl(220, 91%, 54%)", "hsl(220, 14%, 80%)"];
 
 export default function EmployeeDashboard() {
   const { user } = useAuth();
-  const tasks = useMemo(() => getTasks().filter(t => t.assignedTo === user?.id), [user]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadTasks();
+  }, [user]);
+
+  const loadTasks = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    const allTasks = await getTasks();
+    setTasks(allTasks.filter(t => t.assignedTo === user.id));
+    setLoading(false);
+  };
+
   const completed = tasks.filter(t => t.status === "completed");
   const inProgress = tasks.filter(t => t.status === "in-progress").length;
   const avgEfficiency = completed.length ? Math.round(completed.reduce((s, t) => s + (t.efficiency || 0), 0) / completed.length) : 0;

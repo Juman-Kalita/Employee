@@ -1,15 +1,29 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { getTasks, getEmployees } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Users, ListTodo, CheckCircle2, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
+import { Task, Employee } from "@/lib/types";
 
 const COLORS = ["hsl(220, 91%, 54%)", "hsl(220, 14%, 80%)"];
 
 export default function AdminDashboard() {
-  const tasks = useMemo(() => getTasks(), []);
-  const employees = useMemo(() => getEmployees(), []);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    const [tasksData, employeesData] = await Promise.all([getTasks(), getEmployees()]);
+    setTasks(tasksData);
+    setEmployees(employeesData);
+    setLoading(false);
+  };
 
   const completed = tasks.filter(t => t.status === "completed").length;
   const inProgress = tasks.filter(t => t.status === "in-progress").length;

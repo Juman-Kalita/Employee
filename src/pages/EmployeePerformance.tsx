@@ -1,15 +1,30 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getEmployees, getTasks } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Clock, ListTodo, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
+import { Task, Employee } from "@/lib/types";
 
 export default function EmployeePerformance() {
   const { id } = useParams<{ id: string }>();
-  const employee = useMemo(() => getEmployees().find(e => e.id === id), [id]);
-  const tasks = useMemo(() => getTasks().filter(t => t.assignedTo === id), [id]);
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, [id]);
+
+  const loadData = async () => {
+    if (!id) return;
+    setLoading(true);
+    const [employeesData, tasksData] = await Promise.all([getEmployees(), getTasks()]);
+    setEmployee(employeesData.find(e => e.id === id) || null);
+    setTasks(tasksData.filter(t => t.assignedTo === id));
+    setLoading(false);
+  };
 
   if (!employee) return <div className="p-8 text-center text-muted-foreground">Employee not found</div>;
 

@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { getEmployees, saveEmployees, addEmployee, updateEmployee, deleteEmployee } from "@/lib/store";
+import { useState, useMemo, useEffect } from "react";
+import { getEmployees, addEmployee, updateEmployee, deleteEmployee } from "@/lib/store";
 import { Employee } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,25 @@ import { Plus, Search, Pencil, Trash2, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function EmployeeManagement() {
-  const [employees, setEmployees] = useState(getEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [form, setForm] = useState({ name: "", email: "", role: "", status: "active" as "active" | "inactive", password: "" });
   const navigate = useNavigate();
+
+  // Load employees from Supabase
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const loadEmployees = async () => {
+    setLoading(true);
+    const data = await getEmployees();
+    setEmployees(data);
+    setLoading(false);
+  };
 
   const filtered = useMemo(() =>
     employees.filter(e => e.name.toLowerCase().includes(search.toLowerCase()) || e.email.toLowerCase().includes(search.toLowerCase())),
@@ -28,23 +41,22 @@ export default function EmployeeManagement() {
   const openNew = () => { setEditing(null); setForm({ name: "", email: "", role: "", status: "active", password: "" }); setDialogOpen(true); };
   const openEdit = (e: Employee) => { setEditing(e); setForm({ name: e.name, email: e.email, role: e.role, status: e.status, password: e.password || "" }); setDialogOpen(true); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.email || !form.password) return;
     if (editing) {
       const updated = { ...editing, ...form };
-      updateEmployee(updated);
-      setEmployees(getEmployees());
+      await updateEmployee(updated);
     } else {
-      const emp: Employee = { id: `emp-${Date.now()}`, ...form };
-      addEmployee(emp);
-      setEmployees(getEmployees());
+      const emp: Omit<Employee, 'id'> = { ...form };
+      await addEmployee(emp);
     }
+    await loadEmployees();
     setDialogOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteEmployee(id);
-    setEmployees(getEmployees());
+  const handleDelete = async (id: string) => {
+    await deleteEmployee(id);
+    await loadEmployees();
   };
 
   return (

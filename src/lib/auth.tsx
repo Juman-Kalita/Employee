@@ -1,52 +1,67 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { User, UserRole } from "./types";
-import { getEmployees } from "./store";
+import { supabase } from "./supabase";
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => { success: boolean; error?: string };
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Temporary admin account until Supabase integration
-const ADMIN_ACCOUNT = { 
-  email: "admin@worktrack.com", 
-  password: "admin123", 
-  user: { id: "admin-1", email: "admin@worktrack.com", name: "Admin User", role: "admin" as UserRole } 
-};
+// Admin account check
+const ADMIN_EMAIL = "admin@worktrack.com";
+const ADMIN_ID = "00000000-0000-0000-0000-000000000001";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    try { const s = localStorage.getItem("worktrack_user"); return s ? JSON.parse(s) : null; } catch { return null; }
+    try { 
+      const s = localStorage.getItem("worktrack_user"); 
+      return s ? JSON.parse(s) : null; 
+    } catch { 
+      return null; 
+    }
   });
+  const [loading, setLoading] = useState(false);
 
-  const login = useCallback((email: string, password: string) => {
-    // Check admin account
-    if (email === ADMIN_ACCOUNT.email && password === ADMIN_ACCOUNT.password) {
-      setUser(ADMIN_ACCOUNT.user);
-      localStorage.setItem("worktrack_user", JSON.stringify(ADMIN_ACCOUNT.user));
-      return { success: true };
-    }
-    
-    // Check employee accounts
-    const employees = getEmployees();
-    const employee = employees.find(e => e.email === email && e.password === password && e.status === "active");
-    
-    if (employee) {
-      const employeeUser: User = {
-        id: employee.id,
-        email: employee.email,
-        name: employee.name,
-        role: "employee"
+  const login = useCallback(async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      // Query the employees table
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .eq('status', 'active')
+        .single();
+
+      if (error || !data) {
+        setLoading(false);
+        return { success: false, error: "Invalid email or password" };
+      }
+
+      // Determine role based on email or specific admin ID
+      const role: UserRole = (email === ADMIN_EMAIL || data.id === ADMIN_ID) ? "admin" : "employee";
+
+      const authenticatedUser: User = {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: role
       };
-      setUser(employeeUser);
-      localStorage.setItem("worktrack_user", JSON.stringify(employeeUser));
+
+      setUser(authenticatedUser);
+      localStorage.setItem("worktrack_user", JSON.stringify(authenticatedUser));
+      setLoading(false);
       return { success: true };
+    } catch (err) {
+      console.error('Login error:', err);
+      setLoading(false);
+      return { success: false, error: "An error occurred during login" };
     }
-    
-    return { success: false, error: "Invalid email or password" };
   }, []);
 
   const logout = useCallback(() => {
@@ -54,7 +69,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("worktrack_user");
   }, []);
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

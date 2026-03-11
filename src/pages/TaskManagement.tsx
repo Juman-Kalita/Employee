@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, addNotification } from "@/lib/store";
 import { Task, Priority, TaskStatus } from "@/lib/types";
@@ -54,12 +54,25 @@ function TaskCard({ task, onStart, onComplete }: { task: Task; onStart?: () => v
 export default function TaskManagement() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [tasks, setTasks] = useState(getTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterEmployee, setFilterEmployee] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const employees = useMemo(() => getEmployees(), []);
   const [form, setForm] = useState({ title: "", description: "", assignedTo: "", expectedTime: "", deadline: "", priority: "medium" as Priority });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    const [tasksData, employeesData] = await Promise.all([getTasks(), getEmployees()]);
+    setTasks(tasksData);
+    setEmployees(employeesData);
+    setLoading(false);
+  };
 
   const myTasks = useMemo(() => {
     let t = isAdmin ? tasks : tasks.filter(t => t.assignedTo === user?.id);
@@ -73,35 +86,34 @@ export default function TaskManagement() {
     { status: "completed", label: "Completed" },
   ];
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.title || !form.assignedTo) return;
     const now = new Date().toISOString();
-    const task: Task = {
-      id: `task-${Date.now()}`, 
+    const task: Omit<Task, 'id'> = {
       title: form.title, 
       description: form.description,
       assignedTo: form.assignedTo, 
       expectedTime: parseInt(form.expectedTime) || 60,
       deadline: form.deadline || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
       priority: form.priority, 
-      status: "in-progress", // Auto-start when assigned
+      status: "in-progress",
       createdAt: now,
-      startedAt: now, // Set start time immediately
+      startedAt: now,
     };
-    storeAddTask(task);
-    addNotification({ id: `n-${Date.now()}`, message: `New Task Assigned: ${task.title}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
-    setTasks(getTasks());
+    await storeAddTask(task);
+    await addNotification({ message: `New Task Assigned: ${task.title}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
+    await loadData();
     setDialogOpen(false);
     setForm({ title: "", description: "", assignedTo: "", expectedTime: "", deadline: "", priority: "medium" });
   };
 
-  const startTask = (id: string) => {
+  const startTask = async (id: string) => {
     const updated = tasks.map(t => t.id === id ? { ...t, status: "in-progress" as TaskStatus, startedAt: new Date().toISOString() } : t);
-    saveTasks(updated);
-    setTasks(updated);
+    await saveTasks(updated);
+    await loadData();
   };
 
-  const completeTask = (id: string) => {
+  const completeTask = async (id: string) => {
     const now = new Date();
     const updated = tasks.map(t => {
       if (t.id !== id) return t;
@@ -111,8 +123,8 @@ export default function TaskManagement() {
       const efficiency = Math.round((t.expectedTime / actual) * 100);
       return { ...t, status: "completed" as TaskStatus, completedAt: now.toISOString(), actualTime: actual, efficiency };
     });
-    saveTasks(updated);
-    setTasks(updated);
+    await saveTasks(updated);
+    await loadData();
   };
 
   return (

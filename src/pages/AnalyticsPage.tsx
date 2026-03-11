@@ -1,18 +1,33 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { getTasks, getEmployees } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
+import { Task, Employee } from "@/lib/types";
 
 const COLORS = ["hsl(220, 91%, 54%)", "hsl(220, 14%, 80%)"];
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const allTasks = useMemo(() => getTasks(), []);
-  const employees = useMemo(() => getEmployees(), []);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    const [tasksData, employeesData] = await Promise.all([getTasks(), getEmployees()]);
+    setAllTasks(tasksData);
+    setEmployees(employeesData);
+    setLoading(false);
+  };
+
   const tasks = isAdmin ? allTasks : allTasks.filter(t => t.assignedTo === user?.id);
 
   const completed = tasks.filter(t => t.status === "completed");
