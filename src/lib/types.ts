@@ -24,6 +24,14 @@ export interface Task {
   completedAt?: string;
   actualTime?: number; // minutes
   efficiency?: number; // percentage
+  extensionRequest?: {
+    reason: string;
+    proposedDeadline: string;
+    requestedAt: string;
+    status: "pending" | "approved" | "rejected";
+    adminResponse?: string;
+    blockedByEmployee?: string; // ID of employee causing the delay
+  };
 }
 
 export interface Employee {

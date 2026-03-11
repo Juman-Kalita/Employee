@@ -110,7 +110,15 @@ export async function getTasks(): Promise<Task[]> {
     startedAt: t.started_at || undefined,
     completedAt: t.completed_at || undefined,
     actualTime: t.actual_time || undefined,
-    efficiency: t.efficiency || undefined
+    efficiency: t.efficiency || undefined,
+    extensionRequest: t.extension_status ? {
+      reason: t.extension_reason,
+      proposedDeadline: t.extension_proposed_deadline,
+      requestedAt: t.extension_requested_at,
+      status: t.extension_status,
+      adminResponse: t.extension_admin_response || undefined,
+      blockedByEmployee: t.extension_blocked_by_employee || undefined
+    } : undefined
   }));
 }
 
@@ -156,25 +164,40 @@ export async function addTask(task: Omit<Task, 'id'>): Promise<Task | null> {
 }
 
 export async function updateTask(task: Task): Promise<boolean> {
+  const updateData: any = {
+    title: task.title,
+    description: task.description,
+    assigned_to: task.assignedTo,
+    expected_time: task.expectedTime,
+    deadline: task.deadline,
+    priority: task.priority,
+    status: task.status,
+    started_at: task.startedAt || null,
+    completed_at: task.completedAt || null,
+    actual_time: task.actualTime || null,
+    efficiency: task.efficiency || null
+  };
+
+  // Only add extension fields if they exist (for backward compatibility)
+  if (task.extensionRequest) {
+    updateData.extension_reason = task.extensionRequest.reason || null;
+    updateData.extension_proposed_deadline = task.extensionRequest.proposedDeadline || null;
+    updateData.extension_requested_at = task.extensionRequest.requestedAt || null;
+    updateData.extension_status = task.extensionRequest.status || null;
+    updateData.extension_admin_response = task.extensionRequest.adminResponse || null;
+    updateData.extension_blocked_by_employee = task.extensionRequest.blockedByEmployee || null;
+  }
+
+  console.log('Updating task with data:', updateData);
+  
   const { error } = await supabase
     .from('tasks')
-    .update({
-      title: task.title,
-      description: task.description,
-      assigned_to: task.assignedTo,
-      expected_time: task.expectedTime,
-      deadline: task.deadline,
-      priority: task.priority,
-      status: task.status,
-      started_at: task.startedAt || null,
-      completed_at: task.completedAt || null,
-      actual_time: task.actualTime || null,
-      efficiency: task.efficiency || null
-    })
+    .update(updateData)
     .eq('id', task.id);
   
   if (error) {
     console.error('Error updating task:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     return false;
   }
   
