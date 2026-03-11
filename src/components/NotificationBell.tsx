@@ -11,19 +11,19 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<NotificationType[]>([]);
 
   useEffect(() => {
-    const load = () => {
-      const all = getNotifications();
+    const load = async () => {
+      const all = await getNotifications();
       setNotifications(user ? all.filter(n => n.forUser === user.id || n.forUser === "all") : []);
     };
     load();
-    const interval = setInterval(load, 2000);
+    const interval = setInterval(load, 5000);
     return () => clearInterval(interval);
   }, [user]);
 
   const unread = notifications.filter(n => !n.read).length;
 
-  const handleMarkRead = (id: string) => {
-    markNotificationRead(id);
+  const handleMarkRead = async (id: string) => {
+    await markNotificationRead(id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
