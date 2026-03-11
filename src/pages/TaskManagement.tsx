@@ -19,8 +19,7 @@ const priorityColors: Record<Priority, string> = {
   low: "bg-success/10 text-success border-success/20",
 };
 
-function TaskCard({ task, onStart, onComplete }: { task: Task; onStart?: () => void; onComplete?: () => void }) {
-  const employees = getEmployees();
+function TaskCard({ task, employees, onStart, onComplete }: { task: Task; employees: any[]; onStart?: () => void; onComplete?: () => void }) {
   const assignee = employees.find(e => e.id === task.assignedTo);
 
   return (
@@ -163,7 +162,7 @@ export default function TaskManagement() {
             </div>
             <div className="space-y-3 min-h-[100px] rounded-lg bg-muted/30 p-3">
               {myTasks.filter(t => t.status === col.status).map(task => (
-                <TaskCard key={task.id} task={task}
+                <TaskCard key={task.id} task={task} employees={employees}
                   onComplete={!isAdmin ? () => completeTask(task.id) : undefined}
                 />
               ))}

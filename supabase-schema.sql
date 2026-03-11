@@ -48,6 +48,11 @@ ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Allow all operations on employees" ON employees;
+DROP POLICY IF EXISTS "Allow all operations on tasks" ON tasks;
+DROP POLICY IF EXISTS "Allow all operations on notifications" ON notifications;
+
 -- Create policies for employees table (allow all for now, will refine later)
 CREATE POLICY "Allow all operations on employees" ON employees FOR ALL USING (true) WITH CHECK (true);
 
