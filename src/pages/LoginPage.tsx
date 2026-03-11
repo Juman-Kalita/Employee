@@ -15,19 +15,18 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setTimeout(() => {
-      const result = login(email, password);
-      if (result.success) {
-        navigate("/dashboard");
-      } else {
-        setError(result.error || "Login failed");
-      }
-      setLoading(false);
-    }, 400);
+    
+    const result = await login(email, password);
+    if (result.success) {
+      navigate("/dashboard");
+    } else {
+      setError(result.error || "Login failed");
+    }
+    setLoading(false);
   };
 
   return (
