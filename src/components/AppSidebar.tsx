@@ -15,17 +15,17 @@ import { getTasks } from "@/lib/store";
 
 const adminNav = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Tasks", url: "/tasks", icon: ListTodo },
   { title: "Extensions", url: "/extensions", icon: AlertCircle },
   { title: "Employees", url: "/employees", icon: Users },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 const employeeNav = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "My Tasks", url: "/tasks", icon: ListTodo },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "My Tasks", url: "/tasks", icon: ListTodo },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
