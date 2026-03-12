@@ -63,7 +63,7 @@ export default function TaskManagement() {
       const inProgress = empTasks.filter(t => t.status === "in-progress").length;
       const completionRate = empTasks.length > 0 ? Math.round((completed / empTasks.length) * 100) : 0;
       const avgEfficiency = completed > 0 
-        ? Math.round(empTasks.filter(t => t.status === "completed").reduce((sum, t) => sum + (t.efficiency || 0), 0) / completed)
+        ? Math.min(100, Math.round(empTasks.filter(t => t.status === "completed").reduce((sum, t) => sum + (t.efficiency || 0), 0) / completed))
         : 0;
       
       return {
@@ -113,8 +113,8 @@ export default function TaskManagement() {
       const start = new Date(t.startedAt!);
       const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
       const actual = Math.max(actualMinutes, 1);
-      // Store the actual efficiency value in database, cap only for display
-      const efficiency = Math.round((t.expectedTime / actual) * 100);
+      // Cap efficiency at 100% - if completed faster, it's 100% (perfect)
+      const efficiency = Math.min(100, Math.round((t.expectedTime / actual) * 100));
       return { ...t, status: "completed" as TaskStatus, completedAt: now.toISOString(), actualTime: actual, efficiency };
     });
     await saveTasks(updated);
