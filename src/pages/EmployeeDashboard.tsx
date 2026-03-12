@@ -309,7 +309,8 @@ export default function EmployeeDashboard() {
                 const startTime = new Date(task.startedAt!);
                 const now = new Date();
                 const elapsedMinutes = Math.round((now.getTime() - startTime.getTime()) / 60000);
-                const isOvertime = elapsedMinutes > task.expectedTime;
+                // Don't show overtime if extension was approved
+                const isOvertime = task.extensionRequest?.status === 'approved' ? false : elapsedMinutes > task.expectedTime;
                 
                 return (
                   <Card key={task.id} className="border-l-4 border-l-warning">

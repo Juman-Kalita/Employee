@@ -6,13 +6,17 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, Activity } from "lucide-react";
+import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, Activity, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { getTasks } from "@/lib/store";
 
 const adminNav = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Tasks", url: "/tasks", icon: ListTodo },
+  { title: "Extensions", url: "/extensions", icon: AlertCircle },
   { title: "Employees", url: "/employees", icon: Users },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
@@ -32,6 +36,22 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
   const items = user?.role === "admin" ? adminNav : employeeNav;
+  const [pendingExtensions, setPendingExtensions] = useState(0);
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      loadPendingExtensions();
+      // Refresh count every 30 seconds
+      const interval = setInterval(loadPendingExtensions, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const loadPendingExtensions = async () => {
+    const tasks = await getTasks();
+    const pending = tasks.filter(t => t.extensionRequest && t.extensionRequest.status === "pending").length;
+    setPendingExtensions(pending);
+  };
 
   const handleLogout = () => { logout(); navigate("/login"); };
 
@@ -57,6 +77,11 @@ export function AppSidebar() {
                     <NavLink to={item.url} end={item.url === "/dashboard"} className="hover:bg-muted/50" activeClassName="bg-muted text-primary font-medium">
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
+                      {item.url === "/extensions" && pendingExtensions > 0 && (
+                        <Badge variant="destructive" className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs">
+                          {pendingExtensions}
+                        </Badge>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
