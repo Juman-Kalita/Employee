@@ -3,7 +3,7 @@ import { getTasks, getEmployees } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Users, ListTodo, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend } from "recharts";
 import { Task, Employee, Priority } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -51,11 +51,6 @@ export default function AdminDashboard() {
     { name: "Completed", value: completed },
     { name: "In Progress", value: inProgress },
   ];
-
-  const lineData = useMemo(() => {
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    return days.map(d => ({ name: d, tasks: 0 }));
-  }, []);
 
   const openDialog = (type: "employees" | "tasks" | "completed" | "inProgress") => {
     setDialogType(type);
@@ -250,21 +245,6 @@ export default function AdminDashboard() {
                 </Pie>
                 <Tooltip />
               </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm lg:col-span-2">
-          <CardHeader><CardTitle className="text-base">Completions Over Time</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={lineData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" fontSize={12} />
-                <YAxis fontSize={12} />
-                <Tooltip />
-                <Line type="monotone" dataKey="tasks" stroke="hsl(220, 91%, 54%)" strokeWidth={2} dot={{ r: 4 }} />
-              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
