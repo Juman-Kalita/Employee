@@ -62,8 +62,9 @@ export default function TaskManagement() {
       const completed = empTasks.filter(t => t.status === "completed").length;
       const inProgress = empTasks.filter(t => t.status === "in-progress").length;
       const completionRate = empTasks.length > 0 ? Math.round((completed / empTasks.length) * 100) : 0;
+      // Cap each task's efficiency at 100% before averaging
       const avgEfficiency = completed > 0 
-        ? Math.round(empTasks.filter(t => t.status === "completed").reduce((sum, t) => sum + (t.efficiency || 0), 0) / completed)
+        ? Math.round(empTasks.filter(t => t.status === "completed").reduce((sum, t) => sum + Math.min(100, t.efficiency || 0), 0) / completed)
         : 0;
       
       return {
@@ -399,7 +400,7 @@ export default function TaskManagement() {
                           <TrendingUp className="h-4 w-4 text-success" />
                           <span className="text-sm font-medium">Efficiency:</span>
                           <span className={`text-sm font-bold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                            {task.efficiency}%
+                            {Math.min(100, task.efficiency || 0)}%
                           </span>
                           {task.efficiency! >= 100 ? (
                             <span className="text-xs text-success ml-auto">
@@ -727,7 +728,7 @@ export default function TaskManagement() {
                                 <span className="text-muted-foreground">Completed: {new Date(task.completedAt!).toLocaleDateString()}</span>
                                 <span className="text-muted-foreground">Time: {task.actualTime}m</span>
                                 <span className={`font-semibold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                                  Efficiency: {task.efficiency}%
+                                  Efficiency: {Math.min(100, task.efficiency || 0)}%
                                 </span>
                               </div>
                             </CardContent>

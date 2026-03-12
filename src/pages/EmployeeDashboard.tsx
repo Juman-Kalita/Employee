@@ -48,8 +48,9 @@ export default function EmployeeDashboard() {
 
   const completed = tasks.filter(t => t.status === "completed");
   const inProgress = tasks.filter(t => t.status === "in-progress");
+  // Cap each task's efficiency at 100% before averaging
   const avgEfficiency = completed.length 
-    ? Math.round(completed.reduce((s, t) => s + (t.efficiency || 0), 0) / completed.length)
+    ? Math.round(completed.reduce((s, t) => s + Math.min(100, t.efficiency || 0), 0) / completed.length)
     : 0;
 
   const completeTask = async (id: string) => {
@@ -443,7 +444,7 @@ export default function EmployeeDashboard() {
                             <TrendingUp className="h-4 w-4 text-success" />
                             <span className="text-sm font-medium">Efficiency:</span>
                             <span className={`text-sm font-bold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                              {task.efficiency}%
+                              {Math.min(100, task.efficiency || 0)}%
                             </span>
                             {task.efficiency! >= 100 ? (
                               <span className="text-xs text-success ml-auto">

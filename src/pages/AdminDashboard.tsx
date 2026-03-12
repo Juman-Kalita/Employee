@@ -146,7 +146,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-success" />
                     <span className={`text-sm font-semibold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                      Efficiency: {task.efficiency}%
+                      Efficiency: {Math.min(100, task.efficiency || 0)}%
                     </span>
                   </div>
                 </CardContent>

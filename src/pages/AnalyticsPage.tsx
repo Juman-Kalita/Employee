@@ -31,7 +31,8 @@ export default function AnalyticsPage() {
   const tasks = isAdmin ? allTasks : allTasks.filter(t => t.assignedTo === user?.id);
 
   const completed = tasks.filter(t => t.status === "completed");
-  const avgEfficiency = completed.length ? Math.round(completed.reduce((s, t) => s + (t.efficiency || 0), 0) / completed.length) : 0;
+  // Cap average efficiency at 100% to handle old data
+  const avgEfficiency = completed.length ? Math.min(100, Math.round(completed.reduce((s, t) => s + Math.min(100, t.efficiency || 0), 0) / completed.length)) : 0;
   const avgTime = completed.length ? Math.round(completed.reduce((s, t) => s + (t.actualTime || 0), 0) / completed.length) : 0;
 
   // Calculate weekly productivity based on actual completion dates
@@ -52,8 +53,9 @@ export default function AnalyticsPage() {
         return completedDate >= dayStart && completedDate <= dayEnd;
       });
       
+      // Cap each task's efficiency at 100% before averaging
       const dayEfficiency = dayTasks.length 
-        ? Math.round(dayTasks.reduce((s, t) => s + (t.efficiency || 0), 0) / dayTasks.length)
+        ? Math.round(dayTasks.reduce((s, t) => s + Math.min(100, t.efficiency || 0), 0) / dayTasks.length)
         : 0;
       
       return {
@@ -71,9 +73,10 @@ export default function AnalyticsPage() {
 
   const employeeEfficiency = isAdmin ? employees.map(e => {
     const eTasks = allTasks.filter(t => t.assignedTo === e.id && t.status === "completed");
+    // Cap each task's efficiency at 100% before averaging
     return {
       name: e.name.split(" ")[0],
-      efficiency: eTasks.length ? Math.round(eTasks.reduce((s, t) => s + (t.efficiency || 0), 0) / eTasks.length) : 0,
+      efficiency: eTasks.length ? Math.round(eTasks.reduce((s, t) => s + Math.min(100, t.efficiency || 0), 0) / eTasks.length) : 0,
     };
   }) : [];
 
