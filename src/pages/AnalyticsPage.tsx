@@ -31,14 +31,38 @@ export default function AnalyticsPage() {
   const tasks = isAdmin ? allTasks : allTasks.filter(t => t.assignedTo === user?.id);
 
   const completed = tasks.filter(t => t.status === "completed");
-  const avgEfficiency = completed.length ? Math.min(100, Math.round(completed.reduce((s, t) => s + (t.efficiency || 0), 0) / completed.length)) : 0;
+  const avgEfficiency = completed.length ? Math.round(completed.reduce((s, t) => s + (t.efficiency || 0), 0) / completed.length) : 0;
   const avgTime = completed.length ? Math.round(completed.reduce((s, t) => s + (t.actualTime || 0), 0) / completed.length) : 0;
 
-  const weeklyData = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => ({
-    name: d,
-    completed: 0,
-    efficiency: 0,
-  }));
+  // Calculate weekly productivity based on actual completion dates
+  const weeklyData = useMemo(() => {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Start from Sunday
+    
+    return days.map((dayName, index) => {
+      const dayDate = new Date(startOfWeek);
+      dayDate.setDate(startOfWeek.getDate() + index);
+      const dayStart = new Date(dayDate.setHours(0, 0, 0, 0));
+      const dayEnd = new Date(dayDate.setHours(23, 59, 59, 999));
+      
+      const dayTasks = completed.filter(t => {
+        const completedDate = new Date(t.completedAt!);
+        return completedDate >= dayStart && completedDate <= dayEnd;
+      });
+      
+      const dayEfficiency = dayTasks.length 
+        ? Math.round(dayTasks.reduce((s, t) => s + (t.efficiency || 0), 0) / dayTasks.length)
+        : 0;
+      
+      return {
+        name: dayName,
+        completed: dayTasks.length,
+        efficiency: dayEfficiency,
+      };
+    });
+  }, [completed]);
 
   const pieData = [
     { name: "Completed", value: completed.length },
@@ -49,7 +73,7 @@ export default function AnalyticsPage() {
     const eTasks = allTasks.filter(t => t.assignedTo === e.id && t.status === "completed");
     return {
       name: e.name.split(" ")[0],
-      efficiency: eTasks.length ? Math.min(100, Math.round(eTasks.reduce((s, t) => s + (t.efficiency || 0), 0) / eTasks.length)) : 0,
+      efficiency: eTasks.length ? Math.round(eTasks.reduce((s, t) => s + (t.efficiency || 0), 0) / eTasks.length) : 0,
     };
   }) : [];
 

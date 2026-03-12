@@ -49,7 +49,7 @@ export default function EmployeeDashboard() {
   const completed = tasks.filter(t => t.status === "completed");
   const inProgress = tasks.filter(t => t.status === "in-progress");
   const avgEfficiency = completed.length 
-    ? Math.min(100, Math.round(completed.reduce((s, t) => s + (t.efficiency || 0), 0) / completed.length))
+    ? Math.round(completed.reduce((s, t) => s + (t.efficiency || 0), 0) / completed.length)
     : 0;
 
   const completeTask = async (id: string) => {
@@ -59,8 +59,10 @@ export default function EmployeeDashboard() {
       const start = new Date(t.startedAt!);
       const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
       const actual = Math.max(actualMinutes, 1);
-      // Cap efficiency at 100% - if completed faster, it's 100% (perfect)
-      const efficiency = Math.min(100, Math.round((t.expectedTime / actual) * 100));
+      // Only cap efficiency at 100% if it exceeds 100 (completed faster than expected)
+      // If slower than expected, show the actual low efficiency
+      const rawEfficiency = Math.round((t.expectedTime / actual) * 100);
+      const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
       return { ...t, status: "completed" as TaskStatus, completedAt: now.toISOString(), actualTime: actual, efficiency };
     });
     await saveTasks(updated);
@@ -221,7 +223,8 @@ export default function EmployeeDashboard() {
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
-                        const efficiency = Math.min(100, Math.round((data.expectedTime / data.actualTime) * 100));
+                        const rawEfficiency = Math.round((data.expectedTime / data.actualTime) * 100);
+                        const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
                         return (
                           <div className="bg-background border rounded-lg p-3 shadow-lg">
                             <p className="font-semibold text-sm mb-2">{data.fullName}</p>
