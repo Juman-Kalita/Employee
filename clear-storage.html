@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Clear WorkTrack Storage</title>
+    <title>Clear SolvixTrack Storage</title>
 </head>
 <body>
-    <h1>Clear WorkTrack Storage</h1>
+    <h1>Clear SolvixTrack Storage</h1>
     <button onclick="clearStorage()">Clear All Data</button>
     <div id="result"></div>
     
@@ -14,12 +14,12 @@
             localStorage.clear();
             
             // Also clear specific keys
-            localStorage.removeItem('worktrack_employees');
-            localStorage.removeItem('worktrack_tasks');
-            localStorage.removeItem('worktrack_notifications');
-            localStorage.removeItem('worktrack_user');
+            localStorage.removeItem('solvixtrack_employees');
+            localStorage.removeItem('solvixtrack_tasks');
+            localStorage.removeItem('solvixtrack_notifications');
+            localStorage.removeItem('solvixtrack_user');
             
-            document.getElementById('result').innerHTML = '<p style="color: green;">All data cleared! Please close this tab and refresh your WorkTrack application.</p>';
+            document.getElementById('result').innerHTML = '<p style="color: green;">All data cleared! Please close this tab and refresh your SolvixTrack application.</p>';
         }
         
         // Auto-clear on load

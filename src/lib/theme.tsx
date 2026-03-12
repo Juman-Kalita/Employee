@@ -7,14 +7,14 @@ const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({ theme
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem("worktrack_theme") as Theme) || "light";
+      return (localStorage.getItem("solvixtrack_theme") as Theme) || "light";
     }
     return "light";
   });
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("worktrack_theme", theme);
+    localStorage.setItem("solvixtrack_theme", theme);
   }, [theme]);
 
   const toggle = () => setTheme(t => (t === "light" ? "dark" : "light"));

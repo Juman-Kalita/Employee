@@ -1,4 +1,4 @@
-# WorkTrack - Employee Performance Tracking System
+# SolvixTrack - Employee Performance Tracking System
 
 A modern task management and employee performance tracking system built with React, TypeScript, and Supabase.
 
@@ -63,7 +63,7 @@ The application will be available at `http://localhost:8080`
 ## Default Credentials
 
 **Admin Account:**
-- Email: `admin@worktrack.com`
+- Email: `admin@solvixtrack.com`
 - Password: `admin123`
 
 **Employee Accounts:**
@@ -159,4 +159,4 @@ This project is licensed under the MIT License.
 
 ## Support
 
-For support, email support@worktrack.com or open an issue in the repository.
+For support, email support@solvixtrack.com or open an issue in the repository.
