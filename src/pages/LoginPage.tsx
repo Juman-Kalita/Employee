@@ -10,7 +10,7 @@ import { AlertCircle } from "lucide-react";
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [nameOrEmail, setNameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,7 +20,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     
-    const result = await login(email, password);
+    const result = await login(nameOrEmail, password);
     if (result.success) {
       navigate("/dashboard");
     } else {
@@ -50,8 +50,8 @@ export default function LoginPage() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="admin@worktrack.com" value={email} onChange={e => setEmail(e.target.value)} required />
+                <Label htmlFor="nameOrEmail">Name or Email</Label>
+                <Input id="nameOrEmail" type="text" placeholder="Your name or email" value={nameOrEmail} onChange={e => setNameOrEmail(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -65,8 +65,8 @@ export default function LoginPage() {
             <div className="mt-6 rounded-lg bg-muted p-4 space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Demo Credentials</p>
               <div className="text-xs text-muted-foreground space-y-1">
-                <p><span className="font-medium text-foreground">Admin:</span> admin@worktrack.com / admin123</p>
-                <p className="text-[10px] mt-1 italic">Employee credentials are created when you add employees</p>
+                <p><span className="font-medium text-foreground">Admin:</span> Admin User / admin123</p>
+                <p className="text-[10px] mt-1 italic">Employees can login with their name and password</p>
               </div>
             </div>
           </CardContent>

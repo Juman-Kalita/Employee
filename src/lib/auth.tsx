@@ -4,7 +4,7 @@ import { supabase } from "./supabase";
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (nameOrEmail: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   loading: boolean;
 }
@@ -26,25 +26,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
   const [loading, setLoading] = useState(false);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (nameOrEmail: string, password: string) => {
     setLoading(true);
     try {
-      // Query the employees table
-      const { data, error } = await supabase
+      // Try to find employee by name first, then by email
+      let query = supabase
         .from('employees')
         .select('*')
-        .eq('email', email)
         .eq('password', password)
-        .eq('status', 'active')
-        .single();
+        .eq('status', 'active');
+
+      // Check if input looks like an email (contains @)
+      if (nameOrEmail.includes('@')) {
+        query = query.eq('email', nameOrEmail);
+      } else {
+        query = query.eq('name', nameOrEmail);
+      }
+
+      const { data, error } = await query.single();
 
       if (error || !data) {
         setLoading(false);
-        return { success: false, error: "Invalid email or password" };
+        return { success: false, error: "Invalid name/email or password" };
       }
 
       // Determine role based on email or specific admin ID
-      const role: UserRole = (email === ADMIN_EMAIL || data.id === ADMIN_ID) ? "admin" : "employee";
+      const role: UserRole = (data.email === ADMIN_EMAIL || data.id === ADMIN_ID) ? "admin" : "employee";
 
       const authenticatedUser: User = {
         id: data.id,

@@ -63,7 +63,12 @@ The application will be available at `http://localhost:8080`
 ## Default Credentials
 
 **Admin Account:**
+- Name: `Admin User`
 - Email: `admin@worktrack.com`
+- Password: `admin123`
+
+**Employee Login:**
+- Employees can login using their name and password (email is optional)
 - Password: `admin123`
 
 **Employee Accounts:**
