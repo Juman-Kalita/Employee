@@ -32,6 +32,8 @@ export default function TaskManagement() {
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [extensionForm, setExtensionForm] = useState({ reason: "", proposedDeadline: "", blockedByEmployee: "" });
+  const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
+  const [cancellationForm, setCancellationForm] = useState({ reason: "" });
   const [form, setForm] = useState({ title: "", description: "", assignedTo: "", expectedTime: "", deadline: "", priority: "medium" as Priority });
 
   useEffect(() => {
@@ -172,6 +174,42 @@ export default function TaskManagement() {
     setSelectedTask(null);
   };
 
+  const openCancellationDialog = (task: Task) => {
+    setSelectedTask(task);
+    setCancellationForm({ reason: "" });
+    setCancellationDialogOpen(true);
+  };
+
+  const submitCancellationRequest = async () => {
+    if (!selectedTask || !cancellationForm.reason) return;
+    
+    const updated = tasks.map(t => {
+      if (t.id !== selectedTask.id) return t;
+      return {
+        ...t,
+        cancellationRequest: {
+          reason: cancellationForm.reason,
+          requestedAt: new Date().toISOString(),
+          status: "pending" as const
+        }
+      };
+    });
+    
+    await saveTasks(updated);
+    
+    // Notify admin
+    await addNotification({
+      message: `Cancellation request for task "${selectedTask.title}" from ${user?.name}`,
+      read: false,
+      createdAt: new Date().toISOString(),
+      forUser: "00000000-0000-0000-0000-000000000001" // Admin user ID
+    });
+    
+    await loadData();
+    setCancellationDialogOpen(false);
+    setSelectedTask(null);
+  };
+
   const handleExtensionApproval = async (taskId: string, approved: boolean, adminResponse?: string) => {
     const updated = tasks.map(t => {
       if (t.id !== taskId || !t.extensionRequest) return t;
@@ -215,6 +253,8 @@ export default function TaskManagement() {
   if (!isAdmin) {
     const inProgressTasks = userTasks.filter(t => t.status === "in-progress");
     const completedTasks = userTasks.filter(t => t.status === "completed");
+    const cancelledTasks = completedTasks.filter(t => t.cancellationRequest?.status === 'approved');
+    const actuallyCompletedTasks = completedTasks.filter(t => !t.cancellationRequest || t.cancellationRequest.status !== 'approved');
 
     return (
       <div className="space-y-6 animate-fade-in">
@@ -223,7 +263,7 @@ export default function TaskManagement() {
           <p className="text-muted-foreground">View your assigned tasks and progress</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-6 text-center">
               <ListTodo className="h-8 w-8 mx-auto mb-2 text-primary" />
@@ -241,8 +281,15 @@ export default function TaskManagement() {
           <Card>
             <CardContent className="p-6 text-center">
               <CheckCircle className="h-8 w-8 mx-auto mb-2 text-success" />
-              <p className="text-3xl font-bold">{completedTasks.length}</p>
+              <p className="text-3xl font-bold">{actuallyCompletedTasks.length}</p>
               <p className="text-sm text-muted-foreground">Completed</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6 text-center">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+              <p className="text-3xl font-bold">{cancelledTasks.length}</p>
+              <p className="text-sm text-muted-foreground">Cancelled</p>
             </CardContent>
           </Card>
         </div>
@@ -337,11 +384,17 @@ export default function TaskManagement() {
                             <CheckCircle className="h-4 w-4" />
                             Complete
                           </Button>
-                          {!task.extensionRequest && (
-                            <Button onClick={() => openExtensionDialog(task)} size="sm" variant="outline" className="gap-2">
-                              <AlertCircle className="h-4 w-4" />
-                              Request Extension
-                            </Button>
+                          {!task.extensionRequest && !task.cancellationRequest && (
+                            <>
+                              <Button onClick={() => openExtensionDialog(task)} size="sm" variant="outline" className="gap-2">
+                                <AlertCircle className="h-4 w-4" />
+                                Request Extension
+                              </Button>
+                              <Button onClick={() => openCancellationDialog(task)} size="sm" variant="destructive" className="gap-2">
+                                <AlertCircle className="h-4 w-4" />
+                                Cancel Task
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -361,62 +414,84 @@ export default function TaskManagement() {
               Completed ({completedTasks.length})
             </h2>
             <div className="space-y-3">
-              {completedTasks.map(task => (
-                <Card key={task.id} className="hover:shadow-md transition-all border-l-4 border-l-success opacity-90">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-lg">{task.title}</h3>
-                          <Badge variant="outline" className={priorityColors[task.priority]}>
-                            {task.priority}
-                          </Badge>
-                          <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                            ✓ Completed
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
-                        
-                        <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                            <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+              {completedTasks.map(task => {
+                const isCancelled = task.cancellationRequest?.status === 'approved';
+                
+                return (
+                  <Card key={task.id} className={`hover:shadow-md transition-all border-l-4 ${isCancelled ? 'border-l-destructive opacity-75' : 'border-l-success opacity-90'}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-lg">{task.title}</h3>
+                            <Badge variant="outline" className={priorityColors[task.priority]}>
+                              {task.priority}
+                            </Badge>
+                            {isCancelled ? (
+                              <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
+                                ✗ Cancelled
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                                ✓ Completed
+                              </Badge>
+                            )}
                           </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Completed On</p>
-                            <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Expected Time</p>
-                            <p className="text-sm font-medium">{task.expectedTime} minutes</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Actual Time</p>
-                            <p className="text-sm font-medium">{task.actualTime} minutes</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 p-2 bg-success/5 rounded border border-success/20">
-                          <TrendingUp className="h-4 w-4 text-success" />
-                          <span className="text-sm font-medium">Efficiency:</span>
-                          <span className={`text-sm font-bold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                            {Math.min(100, task.efficiency || 0)}%
-                          </span>
-                          {task.efficiency! >= 100 ? (
-                            <span className="text-xs text-success ml-auto">
-                              ✓ Completed ahead of schedule
-                            </span>
+                          <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
+                          
+                          {isCancelled ? (
+                            <div className="p-3 bg-destructive/5 border border-destructive/20 rounded">
+                              <p className="text-sm font-medium text-destructive mb-1">Task Cancelled</p>
+                              <p className="text-xs text-muted-foreground">Reason: {task.cancellationRequest?.reason}</p>
+                              {task.cancellationRequest?.adminResponse && (
+                                <p className="text-xs text-muted-foreground mt-1">Admin: {task.cancellationRequest.adminResponse}</p>
+                              )}
+                            </div>
                           ) : (
-                            <span className="text-xs text-warning ml-auto">
-                              Took {task.actualTime! - task.expectedTime} minutes extra
-                            </span>
+                            <>
+                              <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
+                                  <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Completed On</p>
+                                  <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Expected Time</p>
+                                  <p className="text-sm font-medium">{task.expectedTime} minutes</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Actual Time</p>
+                                  <p className="text-sm font-medium">{task.actualTime} minutes</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 p-2 bg-success/5 rounded border border-success/20">
+                                <TrendingUp className="h-4 w-4 text-success" />
+                                <span className="text-sm font-medium">Efficiency:</span>
+                                <span className={`text-sm font-bold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
+                                  {Math.min(100, task.efficiency || 0)}%
+                                </span>
+                                {task.efficiency! >= 100 ? (
+                                  <span className="text-xs text-success ml-auto">
+                                    ✓ Completed ahead of schedule
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-warning ml-auto">
+                                    Took {task.actualTime! - task.expectedTime} minutes extra
+                                  </span>
+                                )}
+                              </div>
+                            </>
                           )}
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
@@ -491,6 +566,38 @@ export default function TaskManagement() {
                 disabled={!extensionForm.reason || !extensionForm.proposedDeadline}
               >
                 Submit Request
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Cancellation Request Dialog */}
+        <Dialog open={cancellationDialogOpen} onOpenChange={setCancellationDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Request Task Cancellation</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Task: {selectedTask?.title}</p>
+                <p className="text-sm text-destructive">This will request admin approval to cancel this task.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Reason for Cancellation</Label>
+                <Textarea 
+                  placeholder="Explain why this task cannot be completed..."
+                  value={cancellationForm.reason}
+                  onChange={e => setCancellationForm(f => ({ ...f, reason: e.target.value }))}
+                  rows={4}
+                />
+              </div>
+              <Button 
+                onClick={submitCancellationRequest} 
+                variant="destructive"
+                className="w-full"
+                disabled={!cancellationForm.reason}
+              >
+                Submit Cancellation Request
               </Button>
             </div>
           </DialogContent>

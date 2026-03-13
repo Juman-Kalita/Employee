@@ -29,7 +29,11 @@ CREATE TABLE IF NOT EXISTS tasks (
   extension_requested_at TIMESTAMPTZ,
   extension_status TEXT CHECK (extension_status IN ('pending', 'approved', 'rejected')),
   extension_admin_response TEXT,
-  extension_blocked_by_employee UUID REFERENCES employees(id) ON DELETE SET NULL
+  extension_blocked_by_employee UUID REFERENCES employees(id) ON DELETE SET NULL,
+  cancellation_reason TEXT,
+  cancellation_requested_at TIMESTAMPTZ,
+  cancellation_status TEXT CHECK (cancellation_status IN ('pending', 'approved', 'rejected')),
+  cancellation_admin_response TEXT
 );
 
 -- Create notifications table

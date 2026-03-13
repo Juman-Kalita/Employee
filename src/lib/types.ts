@@ -32,6 +32,12 @@ export interface Task {
     adminResponse?: string;
     blockedByEmployee?: string; // ID of employee causing the delay
   };
+  cancellationRequest?: {
+    reason: string;
+    requestedAt: string;
+    status: "pending" | "approved" | "rejected";
+    adminResponse?: string;
+  };
 }
 
 export interface Employee {

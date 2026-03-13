@@ -28,7 +28,7 @@ export default function EmployeeDashboard() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<"all" | "completed" | "inProgress">("all");
+  const [dialogType, setDialogType] = useState<"all" | "completed" | "inProgress" | "cancelled">("all");
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [extensionForm, setExtensionForm] = useState({ reason: "", proposedDeadline: "", blockedByEmployee: "" });
@@ -48,9 +48,11 @@ export default function EmployeeDashboard() {
 
   const completed = tasks.filter(t => t.status === "completed");
   const inProgress = tasks.filter(t => t.status === "in-progress");
+  const cancelledTasks = completed.filter(t => t.cancellationRequest?.status === 'approved');
+  const actuallyCompleted = completed.filter(t => !t.cancellationRequest || t.cancellationRequest.status !== 'approved');
   // Cap each task's efficiency at 100% before averaging
-  const avgEfficiency = completed.length 
-    ? Math.round(completed.reduce((s, t) => s + Math.min(100, t.efficiency || 0), 0) / completed.length)
+  const avgEfficiency = actuallyCompleted.length 
+    ? Math.round(actuallyCompleted.reduce((s, t) => s + Math.min(100, t.efficiency || 0), 0) / actuallyCompleted.length)
     : 0;
 
   const completeTask = async (id: string) => {
@@ -70,20 +72,22 @@ export default function EmployeeDashboard() {
     await loadTasks();
   };
 
-  const openDialog = (type: "all" | "completed" | "inProgress") => {
+  const openDialog = (type: "all" | "completed" | "inProgress" | "cancelled") => {
     setDialogType(type);
     setDialogOpen(true);
   };
 
   const getDialogTasks = () => {
-    if (dialogType === "completed") return completed;
+    if (dialogType === "completed") return actuallyCompleted;
     if (dialogType === "inProgress") return inProgress;
+    if (dialogType === "cancelled") return cancelledTasks;
     return tasks;
   };
 
   const getDialogTitle = () => {
-    if (dialogType === "completed") return `Completed Tasks (${completed.length})`;
+    if (dialogType === "completed") return `Completed Tasks (${actuallyCompleted.length})`;
     if (dialogType === "inProgress") return `In Progress Tasks (${inProgress.length})`;
+    if (dialogType === "cancelled") return `Cancelled Tasks (${cancelledTasks.length})`;
     return `All Assigned Tasks (${tasks.length})`;
   };
 
@@ -165,15 +169,18 @@ export default function EmployeeDashboard() {
         <p className="text-primary-foreground/80 mt-1">Here's your productivity overview</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div onClick={() => openDialog("all")} className="cursor-pointer">
           <StatsCard title="Assigned" value={tasks.length} icon={ListTodo} />
         </div>
         <div onClick={() => openDialog("completed")} className="cursor-pointer">
-          <StatsCard title="Completed" value={completed.length} icon={CheckCircle2} />
+          <StatsCard title="Completed" value={actuallyCompleted.length} icon={CheckCircle2} />
         </div>
         <div onClick={() => openDialog("inProgress")} className="cursor-pointer">
           <StatsCard title="In Progress" value={inProgress.length} icon={Clock} />
+        </div>
+        <div onClick={() => openDialog("cancelled")} className="cursor-pointer">
+          <StatsCard title="Cancelled" value={cancelledTasks.length} icon={AlertCircle} />
         </div>
         <StatsCard title="Avg Efficiency" value={`${avgEfficiency}%`} icon={TrendingUp} />
       </div>
@@ -405,8 +412,10 @@ export default function EmployeeDashboard() {
               }
               
               if (isCompleted) {
+                const isCancelled = task.cancellationRequest?.status === 'approved';
+                
                 return (
-                  <Card key={task.id} className="border-l-4 border-l-success opacity-90">
+                  <Card key={task.id} className={`border-l-4 ${isCancelled ? 'border-l-destructive opacity-75' : 'border-l-success opacity-90'}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
@@ -415,47 +424,65 @@ export default function EmployeeDashboard() {
                             <Badge variant="outline" className={priorityColors[task.priority]}>
                               {task.priority}
                             </Badge>
-                            <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                              ✓ Completed
-                            </Badge>
+                            {isCancelled ? (
+                              <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
+                                ✗ Cancelled
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                                ✓ Completed
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
                           
-                          <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          {isCancelled ? (
+                            <div className="p-3 bg-destructive/5 border border-destructive/20 rounded">
+                              <p className="text-sm font-medium text-destructive mb-1">Task Cancelled</p>
+                              <p className="text-xs text-muted-foreground">Reason: {task.cancellationRequest?.reason}</p>
+                              {task.cancellationRequest?.adminResponse && (
+                                <p className="text-xs text-muted-foreground mt-1">Admin: {task.cancellationRequest.adminResponse}</p>
+                              )}
                             </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Completed On</p>
-                              <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Expected Time</p>
-                              <p className="text-sm font-medium">{task.expectedTime} minutes</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Actual Time</p>
-                              <p className="text-sm font-medium">{task.actualTime} minutes</p>
-                            </div>
-                          </div>
+                          ) : (
+                            <>
+                              <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
+                                  <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Completed On</p>
+                                  <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Expected Time</p>
+                                  <p className="text-sm font-medium">{task.expectedTime} minutes</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Actual Time</p>
+                                  <p className="text-sm font-medium">{task.actualTime} minutes</p>
+                                </div>
+                              </div>
 
-                          <div className="flex items-center gap-2 p-2 bg-success/5 rounded border border-success/20">
-                            <TrendingUp className="h-4 w-4 text-success" />
-                            <span className="text-sm font-medium">Efficiency:</span>
-                            <span className={`text-sm font-bold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                              {Math.min(100, task.efficiency || 0)}%
-                            </span>
-                            {task.efficiency! >= 100 ? (
-                              <span className="text-xs text-success ml-auto">
-                                ✓ Completed ahead of schedule
-                              </span>
-                            ) : (
-                              <span className="text-xs text-warning ml-auto">
-                                Took {task.actualTime! - task.expectedTime} minutes extra
-                              </span>
-                            )}
-                          </div>
+                              <div className="flex items-center gap-2 p-2 bg-success/5 rounded border border-success/20">
+                                <TrendingUp className="h-4 w-4 text-success" />
+                                <span className="text-sm font-medium">Efficiency:</span>
+                                <span className={`text-sm font-bold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
+                                  {Math.min(100, task.efficiency || 0)}%
+                                </span>
+                                {task.efficiency! >= 100 ? (
+                                  <span className="text-xs text-success ml-auto">
+                                    ✓ Completed ahead of schedule
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-warning ml-auto">
+                                    Took {task.actualTime! - task.expectedTime} minutes extra
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </CardContent>

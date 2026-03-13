@@ -118,6 +118,12 @@ export async function getTasks(): Promise<Task[]> {
       status: t.extension_status,
       adminResponse: t.extension_admin_response || undefined,
       blockedByEmployee: t.extension_blocked_by_employee || undefined
+    } : undefined,
+    cancellationRequest: t.cancellation_status ? {
+      reason: t.cancellation_reason,
+      requestedAt: t.cancellation_requested_at,
+      status: t.cancellation_status,
+      adminResponse: t.cancellation_admin_response || undefined
     } : undefined
   }));
 }
@@ -186,6 +192,14 @@ export async function updateTask(task: Task): Promise<boolean> {
     updateData.extension_status = task.extensionRequest.status || null;
     updateData.extension_admin_response = task.extensionRequest.adminResponse || null;
     updateData.extension_blocked_by_employee = task.extensionRequest.blockedByEmployee || null;
+  }
+
+  // Only add cancellation fields if they exist
+  if (task.cancellationRequest) {
+    updateData.cancellation_reason = task.cancellationRequest.reason || null;
+    updateData.cancellation_requested_at = task.cancellationRequest.requestedAt || null;
+    updateData.cancellation_status = task.cancellationRequest.status || null;
+    updateData.cancellation_admin_response = task.cancellationRequest.adminResponse || null;
   }
 
   console.log('Updating task with data:', updateData);
