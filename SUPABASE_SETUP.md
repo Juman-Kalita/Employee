@@ -37,7 +37,7 @@ Since Supabase operations are async, components need to be updated to use `useEf
 ## Default Admin Credentials
 
 After running the SQL script, you can log in with:
-- Email: admin@solvixtrack.com
+- Email: admin@worktrack.com
 - Password: admin123
 
 ## Environment Variables

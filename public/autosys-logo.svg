@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 300" fill="none">
+  <!-- AUTOSYS text in blue -->
+  <text x="10" y="220" font-family="Arial, sans-serif" font-size="180" font-weight="bold" fill="#0ea5e9">AUTOSYS</text>
+  
+  <!-- Orange infinity symbol -->
+  <path d="M 880 80 Q 920 40, 960 80 Q 1000 120, 960 160 Q 920 200, 880 160 Q 920 120, 960 120 M 880 160 Q 840 200, 800 160 Q 760 120, 800 80 Q 840 40, 880 80 Q 840 120, 800 120" 
+        fill="none" 
+        stroke="#f97316" 
+        stroke-width="20" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+</svg>

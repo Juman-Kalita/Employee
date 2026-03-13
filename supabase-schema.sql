@@ -74,5 +74,5 @@ CREATE POLICY "Allow all operations on notifications" ON notifications FOR ALL U
 
 -- Insert admin user (password: admin123)
 INSERT INTO employees (id, name, email, password, role, status)
-VALUES ('00000000-0000-0000-0000-000000000001', 'Admin User', 'admin@solvixtrack.com', 'admin123', 'Admin', 'active')
+VALUES ('00000000-0000-0000-0000-000000000001', 'Admin User', 'admin@worktrack.com', 'admin123', 'Admin', 'active')
 ON CONFLICT (email) DO NOTHING;

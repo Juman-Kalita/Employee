@@ -6,7 +6,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, Activity, AlertCircle } from "lucide-react";
+import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -58,11 +58,13 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <Activity className="h-5 w-5 text-primary-foreground" />
+        <div className="flex flex-col items-center gap-1 px-2 py-2">
+          <div className="h-10 flex items-center justify-center">
+            <img src="/Logo.png" alt="WorkTrack" className="h-10 w-auto object-contain" />
           </div>
-          {!collapsed && <span className="font-bold text-lg text-foreground">SolvixTrack</span>}
+          {!collapsed && (
+            <span className="font-bold text-sm text-foreground">WorkTrack</span>
+          )}
         </div>
       </SidebarHeader>
 

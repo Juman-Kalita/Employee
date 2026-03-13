@@ -12,13 +12,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 // Admin account check
-const ADMIN_EMAIL = "admin@solvixtrack.com";
+const ADMIN_EMAIL = "admin@worktrack.com";
 const ADMIN_ID = "00000000-0000-0000-0000-000000000001";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     try { 
-      const s = localStorage.getItem("solvixtrack_user"); 
+      const s = localStorage.getItem("worktrack_user"); 
       return s ? JSON.parse(s) : null; 
     } catch { 
       return null; 
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       setUser(authenticatedUser);
-      localStorage.setItem("solvixtrack_user", JSON.stringify(authenticatedUser));
+      localStorage.setItem("worktrack_user", JSON.stringify(authenticatedUser));
       setLoading(false);
       return { success: true };
     } catch (err) {
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem("solvixtrack_user");
+    localStorage.removeItem("worktrack_user");
   }, []);
 
   return (

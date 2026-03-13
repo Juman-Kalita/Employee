@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Orange infinity symbol icon -->
+  <path d="M 30 30 Q 40 20, 50 30 Q 60 40, 50 50 Q 40 60, 30 50 Q 40 40, 50 40 M 30 50 Q 20 60, 10 50 Q 0 40, 10 30 Q 20 20, 30 30 Q 20 40, 10 40" 
+        fill="none" 
+        stroke="#f97316" 
+        stroke-width="8" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+        transform="translate(25, 25) scale(1.5)"/>
+</svg>
