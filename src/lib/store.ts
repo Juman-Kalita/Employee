@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Employee, Notification, Task } from "./types";
+import { Employee, Notification, Task, Project } from "./types";
 
 // Employees
 export async function getEmployees(): Promise<Employee[]> {
@@ -102,6 +102,7 @@ export async function getTasks(): Promise<Task[]> {
     title: t.title,
     description: t.description,
     assignedTo: t.assigned_to,
+    projectId: t.project_id || undefined,
     expectedTime: t.expected_time,
     deadline: t.deadline,
     priority: t.priority as 'low' | 'medium' | 'high',
@@ -135,6 +136,7 @@ export async function addTask(task: Omit<Task, 'id'>): Promise<Task | null> {
       title: task.title,
       description: task.description,
       assigned_to: task.assignedTo,
+      project_id: task.projectId || null,
       expected_time: task.expectedTime,
       deadline: task.deadline,
       priority: task.priority,
@@ -157,6 +159,7 @@ export async function addTask(task: Omit<Task, 'id'>): Promise<Task | null> {
     title: data.title,
     description: data.description,
     assignedTo: data.assigned_to,
+    projectId: data.project_id || undefined,
     expectedTime: data.expected_time,
     deadline: data.deadline,
     priority: data.priority,
@@ -296,4 +299,30 @@ export async function saveNotifications(notifications: Notification[]): Promise<
 export function saveEmployees() {}
 export function clearAllData() {
   localStorage.clear();
+}
+
+// Projects
+export async function getProjects(): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) { console.error('Error fetching projects:', error); return []; }
+  return data.map(p => ({ id: p.id, name: p.name, assignedTo: p.assigned_to, createdAt: p.created_at }));
+}
+
+export async function addProject(project: Omit<Project, 'id'>): Promise<Project | null> {
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({ name: project.name, assigned_to: project.assignedTo })
+    .select()
+    .single();
+  if (error) { console.error('Error adding project:', error); return null; }
+  return { id: data.id, name: data.name, assignedTo: data.assigned_to, createdAt: data.created_at };
+}
+
+export async function deleteProject(id: string): Promise<boolean> {
+  const { error } = await supabase.from('projects').delete().eq('id', id);
+  if (error) { console.error('Error deleting project:', error); return false; }
+  return true;
 }

@@ -10,11 +10,19 @@ export interface User {
 export type Priority = "low" | "medium" | "high";
 export type TaskStatus = "pending" | "in-progress" | "completed";
 
+export interface Project {
+  id: string;
+  name: string;
+  assignedTo: string; // employee id
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string;
   assignedTo: string; // employee id
+  projectId?: string; // optional project id
   expectedTime: number; // minutes
   deadline: string; // ISO date
   priority: Priority;

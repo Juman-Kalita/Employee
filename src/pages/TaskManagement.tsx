@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, addNotification } from "@/lib/store";
-import { Task, Priority, TaskStatus, Employee } from "@/lib/types";
+import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getProjects, addNotification } from "@/lib/store";
+import { Task, Priority, TaskStatus, Employee, Project } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, CheckCircle, Clock, TrendingUp, User, ChevronRight, ListTodo, AlertCircle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { EmployeeProfileDialog } from "@/components/EmployeeProfileDialog";
 
 const priorityColors: Record<Priority, string> = {
   high: "bg-destructive/10 text-destructive border-destructive/20",
@@ -25,6 +26,7 @@ export default function TaskManagement() {
   const isAdmin = user?.role === "admin";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -44,9 +46,10 @@ export default function TaskManagement() {
 
   const loadData = async () => {
     setLoading(true);
-    const [tasksData, employeesData] = await Promise.all([getTasks(), getEmployees()]);
+    const [tasksData, employeesData, projectsData] = await Promise.all([getTasks(), getEmployees(), getProjects()]);
     setTasks(tasksData);
     setEmployees(employeesData);
+    setProjects(projectsData);
     setLoading(false);
   };
 
@@ -726,254 +729,15 @@ export default function TaskManagement() {
         </Card>
       )}
 
-      {/* Employee Full Profile Dialog */}
-      <Dialog open={!!selectedEmployee} onOpenChange={(open) => { if (!open) { setSelectedEmployee(null); setAddTaskOpen(false); } }}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col overflow-hidden p-0">
-          {selectedEmployee && (() => {
-            const stat = employeeStats.find(s => s.employee.id === selectedEmployee.id) || {
-              employee: selectedEmployee, totalTasks: 0, completed: 0, inProgress: 0, completionRate: 0, avgEfficiency: 0, tasks: []
-            };
-            const completedTasks = stat.tasks.filter(t => t.status === "completed");
-            const inProgressTasks = stat.tasks.filter(t => t.status === "in-progress");
-
-            return (
-              <div className="flex flex-col h-full">
-                {/* Fixed Header */}
-                <div className="p-6 border-b shrink-0">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-20 w-20 bg-primary/10 shrink-0">
-                        <AvatarFallback className="bg-primary/10 text-primary font-bold text-2xl">
-                          {selectedEmployee.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h2 className="text-2xl font-bold">{selectedEmployee.name}</h2>
-                        <p className="text-sm text-muted-foreground mt-0.5">{selectedEmployee.role}</p>
-                        <p className="text-sm text-muted-foreground">{selectedEmployee.email}</p>
-                        <Badge variant="outline" className={selectedEmployee.status === 'active' ? 'text-success border-success/30 bg-success/5 mt-1' : 'text-muted-foreground mt-1'}>
-                          ● {selectedEmployee.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    <Button onClick={() => setAddTaskOpen(v => !v)} className="gap-2 shrink-0">
-                      <Plus className="h-4 w-4" />Add Task
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Scrollable Body */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-
-                {/* Inline Add Task Form */}
-                {addTaskOpen && (
-                  <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
-                    <h3 className="font-semibold text-sm">New Task for {selectedEmployee.name}</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="col-span-2 space-y-1">
-                        <Label className="text-xs">Title</Label>
-                        <Input placeholder="Task title" value={newTaskForm.title} onChange={e => setNewTaskForm(f => ({ ...f, title: e.target.value }))} />
-                      </div>
-                      <div className="col-span-2 space-y-1">
-                        <Label className="text-xs">Description</Label>
-                        <Textarea placeholder="Task description" rows={2} value={newTaskForm.description} onChange={e => setNewTaskForm(f => ({ ...f, description: e.target.value }))} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Deadline</Label>
-                        <Input type="date" value={newTaskForm.deadline} onChange={e => setNewTaskForm(f => ({ ...f, deadline: e.target.value }))} min={new Date().toISOString().split('T')[0]} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Priority</Label>
-                        <Select value={newTaskForm.priority} onValueChange={(v: Priority) => setNewTaskForm(f => ({ ...f, priority: v }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">🟢 Low</SelectItem>
-                            <SelectItem value="medium">🟡 Medium</SelectItem>
-                            <SelectItem value="high">🔴 High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2 space-y-1">
-                        <Label className="text-xs">Expected Time (optional)</Label>
-                        <Input type="number" placeholder="e.g. 60 (minutes)" value={newTaskForm.expectedTime} onChange={e => setNewTaskForm(f => ({ ...f, expectedTime: e.target.value }))} min={1} />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={handleCreateForEmployee} className="flex-1" disabled={!newTaskForm.title}>Assign Task</Button>
-                      <Button variant="outline" onClick={() => setAddTaskOpen(false)}>Cancel</Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Stats + Performance */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card><CardContent className="p-4 text-center">
-                      <p className="text-2xl font-bold">{stat.totalTasks}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Total Tasks</p>
-                    </CardContent></Card>
-                    <Card><CardContent className="p-4 text-center">
-                      <p className="text-2xl font-bold text-warning">{stat.inProgress}</p>
-                      <p className="text-xs text-muted-foreground mt-1">In Progress</p>
-                    </CardContent></Card>
-                    <Card><CardContent className="p-4 text-center">
-                      <p className="text-2xl font-bold text-success">{stat.completed}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Completed</p>
-                    </CardContent></Card>
-                    <Card><CardContent className="p-4 text-center">
-                      <p className={`text-2xl font-bold ${stat.avgEfficiency >= 80 ? 'text-success' : stat.avgEfficiency >= 50 ? 'text-warning' : 'text-destructive'}`}>
-                        {stat.avgEfficiency}%
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Avg Efficiency</p>
-                    </CardContent></Card>
-                  </div>
-
-                  <Card>
-                    <CardContent className="p-4 space-y-3">
-                      <p className="text-sm font-semibold">Performance Summary</p>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Completion Rate</span>
-                          <span className="font-semibold text-foreground">{stat.completionRate}%</span>
-                        </div>
-                        <Progress value={stat.completionRate} className="h-2" />
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Avg Efficiency</span>
-                          <span className="font-semibold text-foreground">{stat.avgEfficiency}%</span>
-                        </div>
-                        <Progress value={stat.avgEfficiency} className="h-2" />
-                      </div>
-                      <div className="pt-1 border-t text-xs text-muted-foreground space-y-1">
-                        <p className="flex justify-between"><span>High priority</span><span className="font-medium text-destructive">{stat.tasks.filter(t => t.priority === 'high').length}</span></p>
-                        <p className="flex justify-between"><span>Medium priority</span><span className="font-medium text-warning">{stat.tasks.filter(t => t.priority === 'medium').length}</span></p>
-                        <p className="flex justify-between"><span>Low priority</span><span className="font-medium text-success">{stat.tasks.filter(t => t.priority === 'low').length}</span></p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* In Progress */}
-                {inProgressTasks.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-warning" />In Progress ({inProgressTasks.length})
-                    </h3>
-                    <div className="space-y-3">
-                      {inProgressTasks.map(task => {
-                        const elapsedMinutes = Math.round((new Date().getTime() - new Date(task.startedAt!).getTime()) / 60000);
-                        const isOvertime = task.extensionRequest?.status === 'approved' ? false : (task.expectedTime > 0 && elapsedMinutes > task.expectedTime);
-                        return (
-                          <Card key={task.id} className="border-l-4 border-l-warning">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <h4 className="font-semibold">{task.title}</h4>
-                                <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
-                              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs p-3 bg-muted/40 rounded-lg mb-2">
-                                <span className="text-muted-foreground">Assigned</span>
-                                <span className="font-medium">{new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
-                                <span className="text-muted-foreground">Deadline</span>
-                                <span className="font-medium">{new Date(task.deadline).toLocaleDateString()}</span>
-                                  {task.expectedTime > 0 && <>
-                                    <span className="text-muted-foreground">Expected Time</span>
-                                    <span className="font-medium">{task.expectedTime} min</span>
-                                  </>}
-                                  <span className="text-muted-foreground">Time Elapsed</span>
-                                  <span className={`font-semibold ${isOvertime ? 'text-destructive' : 'text-primary'}`}>
-                                    {elapsedMinutes} min {isOvertime ? `(+${elapsedMinutes - task.expectedTime}m overtime)` : ''}
-                                  </span>
-                              </div>
-                              {task.extensionRequest?.status === 'pending' && (
-                                <div className="p-3 bg-warning/5 border border-warning/20 rounded">
-                                  <p className="text-xs font-semibold text-warning mb-1">Extension Request Pending</p>
-                                  <p className="text-xs text-muted-foreground mb-1">Reason: {task.extensionRequest.reason}</p>
-                                  <p className="text-xs text-muted-foreground mb-2">Proposed: {new Date(task.extensionRequest.proposedDeadline).toLocaleDateString()}</p>
-                                  <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => handleExtensionApproval(task.id, true)} className="flex-1">Approve</Button>
-                                    <Button size="sm" variant="destructive" onClick={() => handleExtensionApproval(task.id, false)} className="flex-1">Reject</Button>
-                                  </div>
-                                </div>
-                              )}
-                              {task.extensionRequest && task.extensionRequest.status !== 'pending' && (
-                                <div className={`p-2 rounded text-xs ${task.extensionRequest.status === 'approved' ? 'bg-success/5 text-success' : 'bg-destructive/5 text-destructive'}`}>
-                                  Extension {task.extensionRequest.status}{task.extensionRequest.status === 'approved' && ` — New deadline: ${new Date(task.deadline).toLocaleDateString()}`}
-                                </div>
-                              )}
-                              {task.cancellationRequest?.status === 'pending' && (
-                                <div className="p-2 bg-warning/5 border border-warning/20 rounded text-xs">
-                                  <span className="font-semibold text-warning">Not Completed Today: </span>{task.cancellationRequest.reason}
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Completed */}
-                {completedTasks.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-success" />Completed ({completedTasks.length})
-                    </h3>
-                    <div className="space-y-3">
-                      {completedTasks.map(task => (
-                        <Card key={task.id} className="border-l-4 border-l-success">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <h4 className="font-semibold">{task.title}</h4>
-                              <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs p-3 bg-muted/40 rounded-lg mb-2">
-                              <span className="text-muted-foreground">Assigned</span>
-                              <span className="font-medium">{new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
-                              <span className="text-muted-foreground">Completed</span>
-                              <span className="font-medium">{new Date(task.completedAt!).toLocaleDateString()} {new Date(task.completedAt!).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
-                              {task.expectedTime > 0 && <>
-                                <span className="text-muted-foreground">Expected Time</span>
-                                <span className="font-medium">{task.expectedTime} min</span>
-                              </>}
-                              <span className="text-muted-foreground">Actual Time</span>
-                              <span className="font-medium">{task.actualTime} min</span>
-                            </div>
-                            {task.expectedTime > 0 && (
-                            <div className="flex items-center gap-2 p-2 bg-success/5 rounded border border-success/20 text-xs">
-                              <TrendingUp className="h-3.5 w-3.5 text-success" />
-                              <span className="text-muted-foreground">Efficiency:</span>
-                              <span className={`font-bold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                                {Math.min(100, task.efficiency || 0)}%
-                              </span>
-                              <span className="ml-auto text-muted-foreground">
-                                {task.efficiency! >= 100 ? '✓ Ahead of schedule' : `${task.actualTime! - task.expectedTime}m over expected`}
-                              </span>
-                            </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {stat.totalTasks === 0 && !addTaskOpen && (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <ListTodo className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                    <p>No tasks assigned yet. Click "Add Task" to assign one.</p>
-                  </div>
-                )}
-
-                </div>{/* end scrollable body */}
-              </div>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
+      {/* Employee Profile Dialog */}
+      <EmployeeProfileDialog
+        employee={selectedEmployee}
+        tasks={tasks}
+        projects={projects}
+        onClose={() => setSelectedEmployee(null)}
+        onDataChange={loadData}
+        onExtensionApproval={handleExtensionApproval}
+      />
     </div>
   );
 }
