@@ -46,6 +46,12 @@ export interface Task {
     status: "pending" | "approved" | "rejected";
     adminResponse?: string;
   };
+  rescheduleRequest?: {
+    reason: string;
+    requestedAt: string;
+    status: "pending" | "approved" | "rejected";
+    adminResponse?: string;
+  };
 }
 
 export interface Employee {

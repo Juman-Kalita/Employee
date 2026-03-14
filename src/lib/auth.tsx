@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { User, UserRole } from "./types";
 import { supabase } from "./supabase";
+import { markAttendanceLogin, getTodayAttendance, markAttendanceLogout, getTasks } from "./store";
 
 interface AuthContextType {
   user: User | null;
   login: (nameOrEmail: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  checkCanLogout: () => Promise<{ allowed: boolean; blockedTasks: string[] }>;
   loading: boolean;
 }
 
@@ -62,6 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(authenticatedUser);
       localStorage.setItem("worktrack_user", JSON.stringify(authenticatedUser));
+
+      // Mark attendance login for employees
+      if (role === "employee") {
+        await markAttendanceLogin(data.id);
+      }
+
       setLoading(false);
       return { success: true };
     } catch (err) {
@@ -71,13 +79,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const checkCanLogout = useCallback(async (): Promise<{ allowed: boolean; blockedTasks: string[] }> => {
+    if (!user || user.role !== "employee") return { allowed: true, blockedTasks: [] };
+    const tasks = await getTasks();
+    const blocked = tasks.filter(t =>
+      t.assignedTo === user.id &&
+      t.status === "in-progress" &&
+      !t.cancellationRequest &&
+      t.rescheduleRequest?.status !== "approved" &&
+      t.rescheduleRequest?.status !== "pending"
+    );
+    return { allowed: blocked.length === 0, blockedTasks: blocked.map(t => t.title) };
+  }, [user]);
+
+  const logout = useCallback(async () => {
+    // Mark attendance logout for employees
+    if (user && user.role === "employee") {
+      const today = await getTodayAttendance(user.id);
+      if (today && !today.logoutTime) {
+        const tasks = await getTasks();
+        const empTasks = tasks.filter(t => t.assignedTo === user.id && t.status === "in-progress");
+        const allClear = empTasks.every(t =>
+          t.rescheduleRequest?.status === "approved" ||
+          t.rescheduleRequest?.status === "pending" ||
+          t.cancellationRequest?.status === "pending"
+        );
+        const status = (empTasks.length === 0 || allClear) ? "present" : "incomplete";
+        const notes = status === "incomplete"
+          ? `${empTasks.filter(t => !t.rescheduleRequest && !t.cancellationRequest).length} task(s) left incomplete without reason`
+          : undefined;
+        await markAttendanceLogout(today.id, status, notes);
+      }
+    }
     setUser(null);
     localStorage.removeItem("worktrack_user");
-  }, []);
+  }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, checkCanLogout, loading }}>
       {children}
     </AuthContext.Provider>
   );

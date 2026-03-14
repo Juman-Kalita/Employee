@@ -41,11 +41,13 @@ export default function AdminDashboard() {
   const completed = tasks.filter(t => t.status === "completed").length;
   const inProgress = tasks.filter(t => t.status === "in-progress").length;
 
-  const tasksByEmployee = useMemo(() => employees.map(e => ({
-    name: e.name.split(" ")[0],
-    completed: tasks.filter(t => t.assignedTo === e.id && t.status === "completed").length,
-    inProgress: tasks.filter(t => t.assignedTo === e.id && t.status === "in-progress").length,
-  })), [employees, tasks]);
+  const tasksByEmployee = useMemo(() => employees
+    .map(e => ({
+      name: e.name.split(" ")[0],
+      completed: tasks.filter(t => t.assignedTo === e.id && t.status === "completed").length,
+      inProgress: tasks.filter(t => t.assignedTo === e.id && t.status === "in-progress").length,
+    }))
+    .filter(e => e.completed > 0 || e.inProgress > 0), [employees, tasks]);
 
   const pieData = [
     { name: "Completed", value: completed },
@@ -215,8 +217,8 @@ export default function AdminDashboard() {
                 <XAxis dataKey="name" fontSize={12} />
                 <YAxis fontSize={12} />
                 <Tooltip /><Legend />
-                <Bar dataKey="completed" fill="hsl(220, 91%, 54%)" radius={[4, 4, 0, 0]} name="Completed" />
-                <Bar dataKey="inProgress" fill="hsl(220, 14%, 75%)" radius={[4, 4, 0, 0]} name="In Progress" />
+                <Bar dataKey="completed" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} name="Completed" />
+                <Bar dataKey="inProgress" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} name="In Progress" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

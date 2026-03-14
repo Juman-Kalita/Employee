@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+﻿import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getProjects, addNotification } from "@/lib/store";
 import { Task, Priority, TaskStatus, Employee, Project } from "@/lib/types";
@@ -36,6 +36,8 @@ export default function TaskManagement() {
   const [extensionForm, setExtensionForm] = useState({ reason: "", proposedDeadline: "", blockedByEmployee: "" });
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [cancellationForm, setCancellationForm] = useState({ reason: "" });
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [rescheduleForm, setRescheduleForm] = useState({ reason: "" });
   const [form, setForm] = useState({ title: "", description: "", assignedTo: "", expectedTime: "", deadline: "", priority: "medium" as Priority });
   const [newTaskForm, setNewTaskForm] = useState({ title: "", description: "", expectedTime: "", deadline: "", priority: "medium" as Priority });
   const [addTaskOpen, setAddTaskOpen] = useState(false);
@@ -206,6 +208,37 @@ export default function TaskManagement() {
     setSelectedTask(null);
   };
 
+  const openRescheduleDialog = (task: Task) => {
+    setSelectedTask(task);
+    setRescheduleForm({ reason: "" });
+    setRescheduleDialogOpen(true);
+  };
+
+  const submitRescheduleRequest = async () => {
+    if (!selectedTask || !rescheduleForm.reason) return;
+    const updated = tasks.map(t => {
+      if (t.id !== selectedTask.id) return t;
+      return {
+        ...t,
+        rescheduleRequest: {
+          reason: rescheduleForm.reason,
+          requestedAt: new Date().toISOString(),
+          status: "pending" as const,
+        }
+      };
+    });
+    await saveTasks(updated);
+    await addNotification({
+      message: `Reschedule request for task "${selectedTask.title}" from ${user?.name}`,
+      read: false,
+      createdAt: new Date().toISOString(),
+      forUser: "00000000-0000-0000-0000-000000000001"
+    });
+    await loadData();
+    setRescheduleDialogOpen(false);
+    setSelectedTask(null);
+  };
+
   const handleCreateForEmployee = async () => {
     if (!newTaskForm.title || !selectedEmployee) return;
     const now = new Date().toISOString();
@@ -328,7 +361,7 @@ export default function TaskManagement() {
                               {task.priority}
                             </Badge>
                             <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 animate-pulse">
-                              ⏱ Active
+                              â± Active
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
@@ -390,7 +423,16 @@ export default function TaskManagement() {
                             <CheckCircle className="h-4 w-4" />
                             Complete
                           </Button>
-                          {!task.extensionRequest && !task.cancellationRequest && (
+                          {task.rescheduleRequest?.status === "approved" ? (
+                            <div className="text-center p-2 bg-success/10 border border-success/20 rounded text-xs text-success font-medium">
+                              ✓ Rescheduled for next day
+                              <p className="font-bold mt-0.5">{new Date(task.deadline).toLocaleDateString()}</p>
+                            </div>
+                          ) : task.rescheduleRequest?.status === "pending" ? (
+                            <div className="text-center p-2 bg-primary/5 border border-primary/20 rounded text-xs text-primary">
+                              ⏳ Reschedule pending approval
+                            </div>
+                          ) : !task.extensionRequest && !task.cancellationRequest && (
                             <>
                               <Button onClick={() => openExtensionDialog(task)} size="sm" variant="outline" className="gap-2">
                                 <AlertCircle className="h-4 w-4" />
@@ -399,6 +441,10 @@ export default function TaskManagement() {
                               <Button onClick={() => openCancellationDialog(task)} size="sm" variant="outline" className="gap-2">
                                 <AlertCircle className="h-4 w-4" />
                                 Not Completed
+                              </Button>
+                              <Button onClick={() => openRescheduleDialog(task)} size="sm" variant="outline" className="gap-2 text-primary border-primary/30 hover:bg-primary/5">
+                                <AlertCircle className="h-4 w-4" />
+                                Reason
                               </Button>
                             </>
                           )}
@@ -483,7 +529,7 @@ export default function TaskManagement() {
                             {task.priority}
                           </Badge>
                           <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                            ✓ Completed
+                            âœ“ Completed
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
@@ -518,7 +564,7 @@ export default function TaskManagement() {
                           </span>
                           {task.efficiency! >= 100 ? (
                             <span className="text-xs text-success ml-auto">
-                              ✓ Completed ahead of schedule
+                              âœ“ Completed ahead of schedule
                             </span>
                           ) : (
                             <span className="text-xs text-warning ml-auto">
@@ -606,6 +652,37 @@ export default function TaskManagement() {
                 disabled={!extensionForm.reason || !extensionForm.proposedDeadline}
               >
                 Submit Request
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reschedule Request Dialog */}
+        <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Request Task Reschedule</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Task: {selectedTask?.title}</p>
+                <p className="text-sm text-muted-foreground">If approved by admin, this task will be rescheduled to the next day.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Reason for Reschedule</Label>
+                <Textarea
+                  placeholder="Explain why you need to reschedule this task..."
+                  value={rescheduleForm.reason}
+                  onChange={e => setRescheduleForm(f => ({ ...f, reason: e.target.value }))}
+                  rows={4}
+                />
+              </div>
+              <Button
+                onClick={submitRescheduleRequest}
+                className="w-full"
+                disabled={!rescheduleForm.reason}
+              >
+                Submit Reschedule Request
               </Button>
             </div>
           </DialogContent>
@@ -741,3 +818,8 @@ export default function TaskManagement() {
     </div>
   );
 }
+
+
+
+
+

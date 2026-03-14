@@ -6,10 +6,11 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, AlertCircle } from "lucide-react";
+import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, AlertCircle, CalendarCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useEffect, useState } from "react";
 import { getTasks } from "@/lib/store";
 
@@ -18,6 +19,7 @@ const adminNav = [
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Tasks", url: "/tasks", icon: ListTodo },
   { title: "Extensions", url: "/extensions", icon: AlertCircle },
+  { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Employees", url: "/employees", icon: Users },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
@@ -30,13 +32,15 @@ const employeeNav = [
 ];
 
 export function AppSidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, checkCanLogout } = useAuth();
   const { theme, toggle } = useTheme();
   const { state, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
   const items = user?.role === "admin" ? adminNav : employeeNav;
   const [pendingExtensions, setPendingExtensions] = useState(0);
+  const [blockDialog, setBlockDialog] = useState(false);
+  const [blockedTasks, setBlockedTasks] = useState<string[]>([]);
 
   useEffect(() => {
     if (user?.role === "admin") {
@@ -53,9 +57,19 @@ export function AppSidebar() {
     setPendingExtensions(pending);
   };
 
-  const handleLogout = () => { logout(); navigate("/login"); };
+  const handleLogout = async () => {
+    const { allowed, blockedTasks: tasks } = await checkCanLogout();
+    if (!allowed) {
+      setBlockedTasks(tasks);
+      setBlockDialog(true);
+      return;
+    }
+    await logout();
+    navigate("/login");
+  };
 
   return (
+    <>
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex flex-col items-center gap-1 px-2 py-2">
@@ -113,5 +127,31 @@ export function AppSidebar() {
         )}
       </SidebarFooter>
     </Sidebar>
+
+    {/* Logout blocked dialog */}
+    <Dialog open={blockDialog} onOpenChange={setBlockDialog}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" /> Cannot Logout
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-1">
+          <p className="text-sm text-muted-foreground">
+            You have pending tasks that are not completed. Please complete your tasks, submit a reason, or request a reschedule before logging out.
+          </p>
+          <div className="space-y-1">
+            {blockedTasks.map((t, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm p-2 bg-destructive/5 border border-destructive/20 rounded">
+                <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                <span>{t}</span>
+              </div>
+            ))}
+          </div>
+          <Button className="w-full" onClick={() => setBlockDialog(false)}>OK, I'll finish my tasks</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }

@@ -125,6 +125,12 @@ export async function getTasks(): Promise<Task[]> {
       requestedAt: t.cancellation_requested_at,
       status: t.cancellation_status,
       adminResponse: t.cancellation_admin_response || undefined
+    } : undefined,
+    rescheduleRequest: t.reschedule_status ? {
+      reason: t.reschedule_reason,
+      requestedAt: t.reschedule_requested_at,
+      status: t.reschedule_status,
+      adminResponse: t.reschedule_admin_response || undefined
     } : undefined
   }));
 }
@@ -177,6 +183,7 @@ export async function updateTask(task: Task): Promise<boolean> {
     title: task.title,
     description: task.description,
     assigned_to: task.assignedTo,
+    project_id: task.projectId || null,
     expected_time: task.expectedTime,
     deadline: task.deadline,
     priority: task.priority,
@@ -203,6 +210,16 @@ export async function updateTask(task: Task): Promise<boolean> {
     updateData.cancellation_requested_at = task.cancellationRequest.requestedAt || null;
     updateData.cancellation_status = task.cancellationRequest.status || null;
     updateData.cancellation_admin_response = task.cancellationRequest.adminResponse || null;
+  }
+
+  // Only add reschedule fields if they exist
+  if (task.rescheduleRequest) {
+    updateData.reschedule_reason = task.rescheduleRequest.reason || null;
+    updateData.reschedule_requested_at = task.rescheduleRequest.requestedAt || null;
+    updateData.reschedule_status = task.rescheduleRequest.status || null;
+    updateData.reschedule_admin_response = task.rescheduleRequest.adminResponse || null;
+  } else {
+    updateData.reschedule_status = null;
   }
 
   console.log('Updating task with data:', updateData);
@@ -324,5 +341,77 @@ export async function addProject(project: Omit<Project, 'id'>): Promise<Project 
 export async function deleteProject(id: string): Promise<boolean> {
   const { error } = await supabase.from('projects').delete().eq('id', id);
   if (error) { console.error('Error deleting project:', error); return false; }
+  return true;
+}
+
+// Attendance
+export interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  date: string;
+  loginTime: string;
+  logoutTime?: string;
+  status: 'present' | 'incomplete';
+  notes?: string;
+}
+
+export async function getAttendance(): Promise<AttendanceRecord[]> {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .order('date', { ascending: false });
+  if (error) { console.error('Error fetching attendance:', error); return []; }
+  return data.map(a => ({
+    id: a.id,
+    employeeId: a.employee_id,
+    date: a.date,
+    loginTime: a.login_time,
+    logoutTime: a.logout_time || undefined,
+    status: a.status,
+    notes: a.notes || undefined,
+  }));
+}
+
+export async function getTodayAttendance(employeeId: string): Promise<AttendanceRecord | null> {
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .eq('date', today)
+    .maybeSingle();
+  if (error) { console.error('Error fetching today attendance:', error); return null; }
+  if (!data) return null;
+  return {
+    id: data.id,
+    employeeId: data.employee_id,
+    date: data.date,
+    loginTime: data.login_time,
+    logoutTime: data.logout_time || undefined,
+    status: data.status,
+    notes: data.notes || undefined,
+  };
+}
+
+export async function markAttendanceLogin(employeeId: string): Promise<AttendanceRecord | null> {
+  const today = new Date().toISOString().split('T')[0];
+  // Check if already exists
+  const existing = await getTodayAttendance(employeeId);
+  if (existing) return existing;
+  const { data, error } = await supabase
+    .from('attendance')
+    .insert({ employee_id: employeeId, date: today, login_time: new Date().toISOString(), status: 'present' })
+    .select()
+    .single();
+  if (error) { console.error('Error marking login:', error); return null; }
+  return { id: data.id, employeeId: data.employee_id, date: data.date, loginTime: data.login_time, status: data.status };
+}
+
+export async function markAttendanceLogout(id: string, status: 'present' | 'incomplete', notes?: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('attendance')
+    .update({ logout_time: new Date().toISOString(), status, notes: notes || null })
+    .eq('id', id);
+  if (error) { console.error('Error marking logout:', error); return false; }
   return true;
 }
