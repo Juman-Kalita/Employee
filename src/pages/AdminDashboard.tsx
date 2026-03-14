@@ -77,6 +77,20 @@ export default function AdminDashboard() {
     await loadData();
   };
 
+  const handleRescheduleApproval = async (taskId: string, approved: boolean) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.rescheduleRequest) return;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split("T")[0];
+    const updatedTask = approved
+      ? { ...task, deadline: tomorrowStr, rescheduleRequest: { ...task.rescheduleRequest, status: "approved" as const, adminResponse: "Rescheduled to next day" } }
+      : { ...task, rescheduleRequest: { ...task.rescheduleRequest, status: "rejected" as const, adminResponse: "Reschedule rejected" } };
+    await saveTasks([updatedTask]);
+    await addNotification({ message: `Your reschedule request for "${task.title}" has been ${approved ? "approved — rescheduled to tomorrow" : "rejected"}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
+    await loadData();
+  };
+
   const getDialogContent = () => {
     switch (dialogType) {
       case "employees":
@@ -259,6 +273,7 @@ export default function AdminDashboard() {
         onClose={() => setProfileEmployee(null)}
         onDataChange={loadData}
         onExtensionApproval={handleExtensionApproval}
+        onRescheduleApproval={handleRescheduleApproval}
       />
     </div>
   );

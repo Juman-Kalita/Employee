@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Employee, Task, Project, Priority } from "@/lib/types";
 import { addTask as storeAddTask, addProject, addNotification, getTasks, getProjects } from "@/lib/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Clock, TrendingUp, Plus, ChevronDown, ChevronRight, Folder, ListTodo } from "lucide-react";
+import { CheckCircle, Clock, TrendingUp, Plus, ChevronDown, ChevronRight, Folder, ListTodo, CalendarClock } from "lucide-react";
 
 const priorityColors: Record<Priority, string> = {
   high: "bg-destructive/10 text-destructive border-destructive/20",
@@ -18,12 +18,17 @@ const priorityColors: Record<Priority, string> = {
   low: "bg-success/10 text-success border-success/20",
 };
 
-function TaskCard({ task, onExtensionApproval }: { task: Task; onExtensionApproval?: (id: string, approved: boolean) => void }) {
+function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
+  task: Task;
+  onExtensionApproval?: (id: string, approved: boolean) => void;
+  onRescheduleApproval?: (id: string, approved: boolean) => void;
+}) {
   const isInProgress = task.status === "in-progress";
   const elapsedMinutes = isInProgress && task.startedAt
     ? Math.round((Date.now() - new Date(task.startedAt).getTime()) / 60000)
     : null;
   const isOvertime = elapsedMinutes !== null && task.expectedTime > 0 && elapsedMinutes > task.expectedTime;
+
   return (
     <Card className={`border-l-4 ${isInProgress ? "border-l-warning" : "border-l-success"}`}>
       <CardContent className="p-3">
@@ -65,20 +70,43 @@ function TaskCard({ task, onExtensionApproval }: { task: Task; onExtensionApprov
             </div>
           </div>
         )}
+        {task.rescheduleRequest && (
+          <div className={`mt-2 p-2 rounded text-xs border ${
+            task.rescheduleRequest.status === "pending" ? "bg-primary/5 border-primary/20" :
+            task.rescheduleRequest.status === "approved" ? "bg-success/5 border-success/20" :
+            "bg-destructive/5 border-destructive/20"
+          }`}>
+            <div className="flex items-center gap-1 font-medium mb-1">
+              <CalendarClock className="h-3 w-3" />
+              {task.rescheduleRequest.status === "pending" ? "Incomplete Task Reason — Pending" :
+               task.rescheduleRequest.status === "approved" ? `Rescheduled to ${new Date(task.deadline).toLocaleDateString()}` :
+               "Reschedule Rejected"}
+            </div>
+            <p className="text-muted-foreground mb-1">{task.rescheduleRequest.reason}</p>
+            {task.rescheduleRequest.status === "pending" && onRescheduleApproval && (
+              <div className="flex gap-2 mt-1">
+                <Button size="sm" className="h-6 text-xs" onClick={() => onRescheduleApproval(task.id, true)}>Approve & Reschedule</Button>
+                <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => onRescheduleApproval(task.id, false)}>Reject</Button>
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function ProjectRow({ project, tasks, onAddTask, onExtensionApproval }: {
+function ProjectRow({ project, tasks, onAddTask, onExtensionApproval, onRescheduleApproval }: {
   project: Project;
   tasks: Task[];
   onAddTask: (projectId: string, projectName: string) => void;
   onExtensionApproval?: (id: string, approved: boolean) => void;
+  onRescheduleApproval?: (id: string, approved: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const projectTasks = tasks.filter(t => t.projectId === project.id);
   const completed = projectTasks.filter(t => t.status === "completed").length;
+
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpanded(e => !e)}>
@@ -90,7 +118,9 @@ function ProjectRow({ project, tasks, onAddTask, onExtensionApproval }: {
       {expanded && (
         <div className="border-t bg-muted/20 p-3 space-y-2">
           {projectTasks.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No tasks yet</p>}
-          {projectTasks.map(task => <TaskCard key={task.id} task={task} onExtensionApproval={onExtensionApproval} />)}
+          {projectTasks.map(task => (
+            <TaskCard key={task.id} task={task} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />
+          ))}
           <Button size="sm" variant="outline" className="w-full gap-2 mt-1" onClick={e => { e.stopPropagation(); onAddTask(project.id, project.name); }}>
             <Plus className="h-3 w-3" /> Add Task
           </Button>
@@ -107,9 +137,18 @@ export interface EmployeeProfileDialogProps {
   onClose: () => void;
   onDataChange: () => void;
   onExtensionApproval?: (taskId: string, approved: boolean) => void;
+  onRescheduleApproval?: (taskId: string, approved: boolean) => void;
 }
 
-export function EmployeeProfileDialog({ employee, tasks, projects, onClose, onDataChange, onExtensionApproval }: EmployeeProfileDialogProps) {
+export function EmployeeProfileDialog({
+  employee,
+  tasks,
+  projects,
+  onClose,
+  onDataChange,
+  onExtensionApproval,
+  onRescheduleApproval,
+}: EmployeeProfileDialogProps) {
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
   const [localProjects, setLocalProjects] = useState<Project[]>(projects);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
@@ -195,7 +234,6 @@ export function EmployeeProfileDialog({ employee, tasks, projects, onClose, onDa
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-4 mt-2">
-            {/* Stats cards */}
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Total Tasks", value: empTasks.length, icon: ListTodo, color: "text-foreground" },
@@ -211,7 +249,6 @@ export function EmployeeProfileDialog({ employee, tasks, projects, onClose, onDa
                 </Card>
               ))}
             </div>
-            {/* Performance Summary */}
             <Card>
               <CardContent className="p-4">
                 <p className="font-semibold mb-3">Performance Summary</p>
@@ -259,7 +296,7 @@ export function EmployeeProfileDialog({ employee, tasks, projects, onClose, onDa
             {empProjects.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No projects yet</p>}
             <div className="space-y-2">
               {empProjects.map(project => (
-                <ProjectRow key={project.id} project={project} tasks={localTasks} onAddTask={openAddTask} onExtensionApproval={onExtensionApproval} />
+                <ProjectRow key={project.id} project={project} tasks={localTasks} onAddTask={openAddTask} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />
               ))}
             </div>
           </div>
@@ -268,7 +305,9 @@ export function EmployeeProfileDialog({ employee, tasks, projects, onClose, onDa
             <div className="mt-4">
               <h3 className="font-semibold flex items-center gap-2 mb-3"><ListTodo className="h-4 w-4" /> Other Tasks ({standaloneTasks.length})</h3>
               <div className="space-y-2">
-                {standaloneTasks.map(task => <TaskCard key={task.id} task={task} onExtensionApproval={onExtensionApproval} />)}
+                {standaloneTasks.map(task => (
+                  <TaskCard key={task.id} task={task} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />
+                ))}
               </div>
             </div>
           )}
@@ -322,4 +361,3 @@ export function EmployeeProfileDialog({ employee, tasks, projects, onClose, onDa
     </>
   );
 }
-

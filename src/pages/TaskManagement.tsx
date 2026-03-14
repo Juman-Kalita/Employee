@@ -661,7 +661,7 @@ export default function TaskManagement() {
         <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Request Task Reschedule</DialogTitle>
+              <DialogTitle>Incomplete Task Reason</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div>
@@ -669,9 +669,9 @@ export default function TaskManagement() {
                 <p className="text-sm text-muted-foreground">If approved by admin, this task will be rescheduled to the next day.</p>
               </div>
               <div className="space-y-2">
-                <Label>Reason for Reschedule</Label>
+                <Label>Reason for Incomplete Task</Label>
                 <Textarea
-                  placeholder="Explain why you need to reschedule this task..."
+                  placeholder="Explain why you could not complete this task..."
                   value={rescheduleForm.reason}
                   onChange={e => setRescheduleForm(f => ({ ...f, reason: e.target.value }))}
                   rows={4}
@@ -682,7 +682,7 @@ export default function TaskManagement() {
                 className="w-full"
                 disabled={!rescheduleForm.reason}
               >
-                Submit Reschedule Request
+                Submit Reason
               </Button>
             </div>
           </DialogContent>
@@ -814,10 +814,24 @@ export default function TaskManagement() {
         onClose={() => setSelectedEmployee(null)}
         onDataChange={loadData}
         onExtensionApproval={handleExtensionApproval}
+        onRescheduleApproval={async (taskId, approved) => {
+          const task = tasks.find(t => t.id === taskId);
+          if (!task || !task.rescheduleRequest) return;
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowStr = tomorrow.toISOString().split("T")[0];
+          const updatedTask = approved
+            ? { ...task, deadline: tomorrowStr, rescheduleRequest: { ...task.rescheduleRequest, status: "approved" as const, adminResponse: "Rescheduled to next day" } }
+            : { ...task, rescheduleRequest: { ...task.rescheduleRequest, status: "rejected" as const, adminResponse: "Reschedule rejected" } };
+          await saveTasks([updatedTask]);
+          await addNotification({ message: `Your reschedule request for "${task.title}" has been ${approved ? "approved — rescheduled to tomorrow" : "rejected"}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
+          await loadData();
+        }}
       />
     </div>
   );
 }
+
 
 
 
