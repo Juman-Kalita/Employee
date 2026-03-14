@@ -32,7 +32,7 @@ const employeeNav = [
 export function AppSidebar() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
-  const { state } = useSidebar();
+  const { state, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
   const items = user?.role === "admin" ? adminNav : employeeNav;
@@ -76,7 +76,7 @@ export function AppSidebar() {
               {items.map(item => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
-                    <NavLink to={item.url} end={item.url === "/dashboard"} className="hover:bg-muted/50" activeClassName="bg-muted text-primary font-medium">
+                    <NavLink to={item.url} end={item.url === "/dashboard"} className="hover:bg-muted/50" activeClassName="bg-muted text-primary font-medium" onClick={() => setOpenMobile(false)}>
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                       {item.url === "/extensions" && pendingExtensions > 0 && (
