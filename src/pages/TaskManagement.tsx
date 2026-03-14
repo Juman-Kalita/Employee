@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, CheckCircle, Clock, TrendingUp, User, ChevronRight, ListTodo, AlertCircle } from "lucide-react";
+import { Plus, Search, CheckCircle, Clock, TrendingUp, User, ChevronRight, ListTodo, AlertCircle, PlusCircle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { EmployeeProfileDialog } from "@/components/EmployeeProfileDialog";
@@ -41,6 +41,8 @@ export default function TaskManagement() {
   const [form, setForm] = useState({ title: "", description: "", assignedTo: "", expectedTime: "", deadline: "", priority: "medium" as Priority });
   const [newTaskForm, setNewTaskForm] = useState({ title: "", description: "", expectedTime: "", deadline: "", priority: "medium" as Priority });
   const [addTaskOpen, setAddTaskOpen] = useState(false);
+  const [otherTaskOpen, setOtherTaskOpen] = useState(false);
+  const [otherTaskForm, setOtherTaskForm] = useState({ title: "", description: "", actualTime: "", date: new Date().toISOString().split("T")[0] });
 
   useEffect(() => {
     loadData();
@@ -298,6 +300,28 @@ export default function TaskManagement() {
     await loadData();
   };
 
+  const submitOtherTask = async () => {
+    if (!otherTaskForm.title.trim() || !user) return;
+    const dateStr = otherTaskForm.date || new Date().toISOString().split("T")[0];
+    const completedAt = new Date(dateStr).toISOString();
+    await storeAddTask({
+      title: otherTaskForm.title.trim(),
+      description: otherTaskForm.description.trim(),
+      assignedTo: user.id,
+      expectedTime: 0,
+      deadline: dateStr,
+      priority: "low",
+      status: "completed",
+      createdAt: completedAt,
+      startedAt: completedAt,
+      completedAt: completedAt,
+      actualTime: otherTaskForm.actualTime ? parseInt(otherTaskForm.actualTime) : 0,
+    });
+    setOtherTaskForm({ title: "", description: "", actualTime: "", date: new Date().toISOString().split("T")[0] });
+    setOtherTaskOpen(false);
+    await loadData();
+  };
+
   // If employee, show simple task list view
   if (!isAdmin) {
     const inProgressTasks = userTasks.filter(t => t.status === "in-progress");
@@ -306,9 +330,15 @@ export default function TaskManagement() {
 
     return (
       <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-2xl font-bold">My Tasks</h1>
-          <p className="text-muted-foreground">View your assigned tasks and progress</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">My Tasks</h1>
+            <p className="text-muted-foreground">View your assigned tasks and progress</p>
+          </div>
+          <Button onClick={() => setOtherTaskOpen(true)} className="gap-2">
+            <PlusCircle className="h-4 w-4" />
+            Other Tasks
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -590,6 +620,64 @@ export default function TaskManagement() {
             </div>
           </Card>
         )}
+
+        {/* Other Tasks (self-reported) */}
+        {(() => {
+          const otherTasks = userTasks.filter(t => t.status === "completed" && t.expectedTime === 0 && t.startedAt === t.completedAt);
+          if (otherTasks.length === 0) return null;
+          return (
+            <div>
+              <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <PlusCircle className="h-5 w-5 text-primary" />
+                Other Tasks ({otherTasks.length})
+              </h2>
+              <div className="space-y-3">
+                {otherTasks.map(task => (
+                  <Card key={task.id} className="hover:shadow-md transition-all border-l-4 border-l-primary opacity-90">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className="font-semibold text-lg">{task.title}</h3>
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">Self-reported</Badge>
+                      </div>
+                      {task.description && <p className="text-sm text-muted-foreground mb-3">{task.description}</p>}
+                      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                        <span>Date: {new Date(task.deadline).toLocaleDateString()}</span>
+                        {task.actualTime && task.actualTime > 0 && <span>Time spent: {task.actualTime}m</span>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Other Task Dialog */}
+        <Dialog open={otherTaskOpen} onOpenChange={setOtherTaskOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Add Other Task</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+              <p className="text-sm text-muted-foreground">Log any extra work you did outside your assigned tasks.</p>
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input value={otherTaskForm.title} onChange={e => setOtherTaskForm(f => ({ ...f, title: e.target.value }))} placeholder="What did you work on?" />
+              </div>
+              <div className="space-y-2">
+                <Label>Description (optional)</Label>
+                <Textarea value={otherTaskForm.description} onChange={e => setOtherTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief description..." rows={3} />
+              </div>
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Input type="date" value={otherTaskForm.date} onChange={e => setOtherTaskForm(f => ({ ...f, date: e.target.value }))} max={new Date().toISOString().split("T")[0]} />
+              </div>
+              <div className="space-y-2">
+                <Label>Time Spent (minutes, optional)</Label>
+                <Input type="number" value={otherTaskForm.actualTime} onChange={e => setOtherTaskForm(f => ({ ...f, actualTime: e.target.value }))} placeholder="e.g. 45" min="1" />
+              </div>
+              <Button onClick={submitOtherTask} className="w-full" disabled={!otherTaskForm.title.trim()}>Submit</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Extension Request Dialog */}
         <Dialog open={extensionDialogOpen} onOpenChange={setExtensionDialogOpen}>
