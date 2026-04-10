@@ -24,12 +24,12 @@ export default function SalesPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", projectNumber: "", startDate: "", endDate: "" });
+  const [form, setForm] = useState({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "" });
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<SalesProject | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
-  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "" });
+  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "", assignedAt: "" });
 
   useEffect(() => { loadData(); }, []);
 
@@ -44,8 +44,9 @@ export default function SalesPage() {
 
   const handleAdd = async () => {
     if (!form.name.trim() || !form.projectNumber.trim() || !form.startDate || !form.endDate) return;
-    await addSalesProject({ name: form.name.trim(), projectNumber: form.projectNumber.trim(), startDate: form.startDate, endDate: form.endDate });
-    setForm({ name: "", projectNumber: "", startDate: "", endDate: "" });
+    const createdAt = form.createdAt ? new Date(form.createdAt).toISOString() : new Date().toISOString();
+    await addSalesProject({ name: form.name.trim(), projectNumber: form.projectNumber.trim(), startDate: form.startDate, endDate: form.endDate, createdAt });
+    setForm({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "" });
     setAddOpen(false);
     await loadData();
   };
@@ -58,13 +59,13 @@ export default function SalesPage() {
   const openAddTask = (project: SalesProject) => {
     setSelectedProject(project);
     setSelectedEmployee("");
-    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "" });
+    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "", assignedAt: "" });
     setAddTaskOpen(true);
   };
 
   const handleAddTask = async () => {
     if (!selectedProject || !selectedEmployee || !taskForm.description.trim()) return;
-    const now = new Date().toISOString();
+    const assignedAt = taskForm.assignedAt ? new Date(taskForm.assignedAt).toISOString() : new Date().toISOString();
     await storeAddTask({
       title: selectedProject.name,
       description: taskForm.description.trim(),
@@ -74,13 +75,13 @@ export default function SalesPage() {
       deadline: taskForm.deadline || selectedProject.endDate,
       priority: taskForm.priority,
       status: "in-progress",
-      createdAt: now,
-      startedAt: now,
+      createdAt: assignedAt,
+      startedAt: assignedAt,
     });
     await addNotification({
       message: `New task assigned in sales project "${selectedProject.name}"`,
       read: false,
-      createdAt: now,
+      createdAt: assignedAt,
       forUser: selectedEmployee,
     });
     setAddTaskOpen(false);
@@ -239,6 +240,10 @@ export default function SalesPage() {
               <Label>End Date</Label>
               <Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} min={form.startDate} />
             </div>
+            <div className="space-y-2">
+              <Label>Created At (optional — defaults to now)</Label>
+              <Input type="datetime-local" value={form.createdAt} onChange={e => setForm(f => ({ ...f, createdAt: e.target.value }))} />
+            </div>
             <Button onClick={handleAdd} className="w-full" disabled={!form.name.trim() || !form.projectNumber.trim() || !form.startDate || !form.endDate}>
               Create Project
             </Button>
@@ -282,6 +287,10 @@ export default function SalesPage() {
             <div className="space-y-2">
               <Label>Expected Time — optional (minutes)</Label>
               <Input type="number" value={taskForm.expectedTime} onChange={e => setTaskForm(f => ({ ...f, expectedTime: e.target.value }))} placeholder="e.g. 60" min="1" />
+            </div>
+            <div className="space-y-2">
+              <Label>Assigned At (optional — defaults to now)</Label>
+              <Input type="datetime-local" value={taskForm.assignedAt} onChange={e => setTaskForm(f => ({ ...f, assignedAt: e.target.value }))} />
             </div>
             <Button onClick={handleAddTask} className="w-full" disabled={!selectedEmployee || !taskForm.description.trim()}>Assign Task</Button>
           </div>

@@ -433,10 +433,10 @@ export async function getSalesProjects(): Promise<SalesProject[]> {
   }));
 }
 
-export async function addSalesProject(project: Omit<SalesProject, 'id' | 'createdAt'>): Promise<SalesProject | null> {
+export async function addSalesProject(project: Omit<SalesProject, 'id' | 'createdAt'> & { createdAt?: string }): Promise<SalesProject | null> {
   const { data, error } = await supabase
     .from('sales_projects')
-    .insert({ name: project.name, project_number: project.projectNumber, start_date: project.startDate, end_date: project.endDate })
+    .insert({ name: project.name, project_number: project.projectNumber, start_date: project.startDate, end_date: project.endDate, ...(project.createdAt ? { created_at: project.createdAt } : {}) })
     .select()
     .single();
   if (error) { console.error('Error adding sales project:', error); return null; }

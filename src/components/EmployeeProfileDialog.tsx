@@ -158,7 +158,7 @@ export function EmployeeProfileDialog({
   const [localProjects, setLocalProjects] = useState<SalesProject[]>(projects);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [targetProject, setTargetProject] = useState<SalesProject | null>(null);
-  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "" });
+  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "", assignedAt: "" });
 
   useEffect(() => {
     if (employee) refreshData();
@@ -183,13 +183,13 @@ export function EmployeeProfileDialog({
 
   const openAddTask = (project: SalesProject) => {
     setTargetProject(project);
-    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "" });
+    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "", assignedAt: "" });
     setAddTaskOpen(true);
   };
 
   const handleAddTask = async () => {
     if (!targetProject || !taskForm.description.trim()) return;
-    const now = new Date().toISOString();
+    const assignedAt = taskForm.assignedAt ? new Date(taskForm.assignedAt).toISOString() : new Date().toISOString();
     await storeAddTask({
       title: targetProject.name,
       description: taskForm.description,
@@ -199,10 +199,10 @@ export function EmployeeProfileDialog({
       deadline: taskForm.deadline || targetProject.endDate,
       priority: taskForm.priority,
       status: "in-progress",
-      createdAt: now,
-      startedAt: now,
+      createdAt: assignedAt,
+      startedAt: assignedAt,
     });
-    await addNotification({ message: `New task assigned in project "${targetProject.name}"`, read: false, createdAt: now, forUser: employee.id });
+    await addNotification({ message: `New task assigned in project "${targetProject.name}"`, read: false, createdAt: assignedAt, forUser: employee.id });
     setAddTaskOpen(false);
     await refreshData();
   };
@@ -338,6 +338,10 @@ export function EmployeeProfileDialog({
             <div className="space-y-2">
               <Label>Expected Time - optional (minutes)</Label>
               <Input type="number" value={taskForm.expectedTime} onChange={e => setTaskForm(f => ({ ...f, expectedTime: e.target.value }))} placeholder="e.g. 60" min="1" />
+            </div>
+            <div className="space-y-2">
+              <Label>Assigned At (optional — defaults to now)</Label>
+              <Input type="datetime-local" value={taskForm.assignedAt} onChange={e => setTaskForm(f => ({ ...f, assignedAt: e.target.value }))} />
             </div>
             <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim()}>Add Task</Button>
           </div>
