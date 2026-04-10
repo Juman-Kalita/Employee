@@ -103,7 +103,7 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
 function SalesProjectRow({ project, tasks, onAddTask, onExtensionApproval, onRescheduleApproval }: {
   project: SalesProject;
   tasks: Task[];
-  onAddTask: (project: SalesProject) => void;
+  onAddTask: (project?: SalesProject) => void;
   onExtensionApproval?: (id: string, approved: boolean) => void;
   onRescheduleApproval?: (id: string, approved: boolean) => void;
 }) {
@@ -158,7 +158,7 @@ export function EmployeeProfileDialog({
   const [localProjects, setLocalProjects] = useState<SalesProject[]>(projects);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [targetProject, setTargetProject] = useState<SalesProject | null>(null);
-  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority });
+  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, projectId: "" });
 
   useEffect(() => {
     if (employee) refreshData();
@@ -181,20 +181,20 @@ export function EmployeeProfileDialog({
     : 0;
   const standaloneTasks = empTasks.filter(t => !localProjects.some(p => p.name === t.title));
 
-  const openAddTask = (project: SalesProject) => {
-    setTargetProject(project);
-    setTaskForm({ description: "", deadline: "", priority: "medium" });
+  const openAddTask = (project?: SalesProject) => {
+    setTargetProject(project || null);
+    setTaskForm({ description: "", deadline: "", priority: "medium", projectId: project?.id || "" });
     setAddTaskOpen(true);
   };
 
   const handleAddTask = async () => {
-    if (!targetProject || !taskForm.description.trim()) return;
+    if (!taskForm.description.trim()) return;
+    const project = localProjects.find(p => p.id === taskForm.projectId) || targetProject;
+    if (!project) return;
     const now = new Date().toISOString();
-    const deadline = taskForm.deadline
-      ? new Date(taskForm.deadline).toISOString()
-      : targetProject.endDate;
+    const deadline = taskForm.deadline ? new Date(taskForm.deadline).toISOString() : project.endDate;
     await storeAddTask({
-      title: targetProject.name,
+      title: project.name,
       description: taskForm.description,
       assignedTo: employee.id,
       projectId: undefined,
@@ -205,7 +205,7 @@ export function EmployeeProfileDialog({
       createdAt: now,
       startedAt: now,
     });
-    await addNotification({ message: `New task assigned in project "${targetProject.name}"`, read: false, createdAt: now, forUser: employee.id });
+    await addNotification({ message: `New task assigned in project "${project.name}"`, read: false, createdAt: now, forUser: employee.id });
     setAddTaskOpen(false);
     await refreshData();
   };
@@ -286,6 +286,9 @@ export function EmployeeProfileDialog({
           <div className="mt-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold flex items-center gap-2"><Briefcase className="h-4 w-4" /> Projects ({localProjects.length})</h3>
+              <Button size="sm" className="gap-1" onClick={() => openAddTask()}>
+                <Plus className="h-3 w-3" /> Add Task
+              </Button>
             </div>
             {localProjects.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No sales projects yet. Add them from the Sales tab.</p>}
             <div className="space-y-2">
@@ -317,8 +320,19 @@ export function EmployeeProfileDialog({
 
       <Dialog open={addTaskOpen} onOpenChange={setAddTaskOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add Task to "{targetProject?.name}"</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Add Task{targetProject ? ` to "${targetProject.name}"` : ""}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
+            {!targetProject && (
+              <div className="space-y-2">
+                <Label>Project</Label>
+                <Select value={taskForm.projectId} onValueChange={v => setTaskForm(f => ({ ...f, projectId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
+                  <SelectContent>
+                    {localProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name} #{p.projectNumber}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="What needs to be done?" rows={3} />
@@ -338,7 +352,7 @@ export function EmployeeProfileDialog({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim()}>Add Task</Button>
+            <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim() || (!targetProject && !taskForm.projectId)}>Add Task</Button>
           </div>
         </DialogContent>
       </Dialog>
