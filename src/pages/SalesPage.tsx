@@ -139,6 +139,7 @@ export default function SalesPage() {
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground ml-7">
                         <span className="flex items-center gap-1"><Hash className="h-3.5 w-3.5" />{project.projectNumber}</span>
                         <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(project.startDate).toLocaleDateString()} — {new Date(project.endDate).toLocaleDateString()}</span>
+                        <span className="flex items-center gap-1 text-muted-foreground">Created: {new Date(project.createdAt).toLocaleDateString()} at {new Date(project.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                         <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-success" />{completed} done</span>
                         <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-warning" />{inProgress} active</span>
                       </div>
