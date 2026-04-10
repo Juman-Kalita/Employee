@@ -19,10 +19,10 @@ const adminNav = [
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Tasks", url: "/tasks", icon: ListTodo },
   { title: "Sales", url: "/sales", icon: Briefcase },
-  { title: "Service", url: "/service", icon: Wrench },
   { title: "Extensions", url: "/extensions", icon: AlertCircle },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Employees", url: "/employees", icon: Users },
+  { title: "Service", url: "/service", icon: Wrench },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
