@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Package } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 
 const INVENTORY_SESSION_KEY = "worktrack_inventory_user";
 
@@ -29,19 +28,12 @@ export default function InventoryLoginPage() {
     setLoading(true);
     setError("");
 
-    let query = supabase.from('employees').select('*').eq('password', password).eq('status', 'active');
-    if (nameOrEmail.includes('@')) query = query.eq('email', nameOrEmail);
-    else query = query.eq('name', nameOrEmail);
-
-    const { data, error: err } = await query.single();
-    if (err || !data) {
-      setError("Invalid name/email or password");
-      setLoading(false);
-      return;
+    if (nameOrEmail === "inventory" && password === "1234") {
+      localStorage.setItem(INVENTORY_SESSION_KEY, JSON.stringify({ id: "inventory", name: "Inventory", email: "" }));
+      navigate("/inventory-panel/home");
+    } else {
+      setError("Invalid credentials");
     }
-
-    localStorage.setItem(INVENTORY_SESSION_KEY, JSON.stringify({ id: data.id, name: data.name, email: data.email }));
-    navigate("/inventory-panel/home");
     setLoading(false);
   };
 
