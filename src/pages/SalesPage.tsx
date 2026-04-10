@@ -193,6 +193,8 @@ export default function SalesPage() {
                                       </div>
                                       <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
                                         <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                                        {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {new Date(task.createdAt).toLocaleDateString()}</span>}
+                                        {task.status === "completed" && task.completedAt && <span className="text-success">Done: {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {new Date(task.completedAt).toLocaleDateString()}</span>}
                                         {task.actualTime && <span>Time: {task.actualTime}m</span>}
                                         {task.efficiency !== undefined && task.expectedTime > 0 && (
                                           <span className={task.efficiency >= 100 ? "text-success" : "text-warning"}>Efficiency: {Math.min(100, task.efficiency)}%</span>

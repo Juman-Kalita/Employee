@@ -41,7 +41,11 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
             </Badge>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mb-2">Due: {new Date(task.deadline).toLocaleDateString()}</p>
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-2">
+          <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+          {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+          {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+        </div>
         {isInProgress && elapsedMinutes !== null && (
           <div className={`flex items-center gap-2 text-xs p-1.5 rounded ${isOvertime ? "bg-destructive/5 text-destructive" : "bg-primary/5 text-primary"}`}>
             <Clock className="h-3 w-3" />
