@@ -189,12 +189,14 @@ export function EmployeeProfileDialog({
 
   const handleAddTask = async () => {
     if (!taskForm.description.trim()) return;
-    const project = localProjects.find(p => p.id === taskForm.projectId) || targetProject;
-    if (!project) return;
+    const isNone = !targetProject && (!taskForm.projectId || taskForm.projectId === "none");
+    const project = isNone ? null : (localProjects.find(p => p.id === taskForm.projectId) || targetProject);
     const now = new Date().toISOString();
-    const deadline = taskForm.deadline ? new Date(taskForm.deadline).toISOString() : project.endDate;
+    const deadline = taskForm.deadline
+      ? new Date(taskForm.deadline).toISOString()
+      : project?.endDate || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
     await storeAddTask({
-      title: project.name,
+      title: project ? project.name : taskForm.description.trim(),
       description: taskForm.description,
       assignedTo: employee.id,
       projectId: undefined,
@@ -205,7 +207,12 @@ export function EmployeeProfileDialog({
       createdAt: now,
       startedAt: now,
     });
-    await addNotification({ message: `New task assigned in project "${project.name}"`, read: false, createdAt: now, forUser: employee.id });
+    await addNotification({
+      message: project ? `New task assigned in project "${project.name}"` : `New task assigned: ${taskForm.description.trim()}`,
+      read: false,
+      createdAt: now,
+      forUser: employee.id,
+    });
     setAddTaskOpen(false);
     await refreshData();
   };
@@ -328,6 +335,7 @@ export function EmployeeProfileDialog({
                 <Select value={taskForm.projectId} onValueChange={v => setTaskForm(f => ({ ...f, projectId: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">None (standalone task)</SelectItem>
                     {localProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name} #{p.projectNumber}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -352,7 +360,7 @@ export function EmployeeProfileDialog({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim() || (!targetProject && !taskForm.projectId)}>Add Task</Button>
+            <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim() || (!targetProject && taskForm.projectId === "")}>Add Task</Button>
           </div>
         </DialogContent>
       </Dialog>
