@@ -42,7 +42,13 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
           </div>
         </div>
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-2">
-          <span>Due: {new Date(task.deadline).toLocaleDateString()} {new Date(task.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+          <span>Due: {(() => {
+            const d = new Date(task.deadline);
+            const hasTime = task.deadline.includes("T") && !task.deadline.endsWith("T00:00:00.000Z");
+            return hasTime
+              ? `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+              : d.toLocaleDateString();
+          })()}</span>
           {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
           {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
         </div>
@@ -159,6 +165,7 @@ export function EmployeeProfileDialog({
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [targetProject, setTargetProject] = useState<SalesProject | null>(null);
   const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, projectId: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (employee) refreshData();
@@ -188,10 +195,12 @@ export function EmployeeProfileDialog({
   };
 
   const handleAddTask = async () => {
-    if (!taskForm.description.trim()) return;
+    if (!taskForm.description.trim() || submitting) return;
+    setSubmitting(true);
     const isNone = !targetProject && (!taskForm.projectId || taskForm.projectId === "none");
     const project = isNone ? null : (localProjects.find(p => p.id === taskForm.projectId) || targetProject);
     const now = new Date().toISOString();
+    // If deadline has time use full ISO, if date-only keep as date string to avoid timezone shift
     const deadline = taskForm.deadline
       ? new Date(taskForm.deadline).toISOString()
       : project?.endDate || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
@@ -214,6 +223,7 @@ export function EmployeeProfileDialog({
       forUser: employee.id,
     });
     setAddTaskOpen(false);
+    setSubmitting(false);
     await refreshData();
   };
 
@@ -360,7 +370,9 @@ export function EmployeeProfileDialog({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim() || (!targetProject && taskForm.projectId === "")}>Add Task</Button>
+            <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim() || (!targetProject && taskForm.projectId === "") || submitting}>
+              {submitting ? "Adding..." : "Add Task"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

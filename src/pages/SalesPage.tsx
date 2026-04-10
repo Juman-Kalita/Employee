@@ -197,7 +197,11 @@ export default function SalesPage() {
                                         </div>
                                       </div>
                                       <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                                        <span>Due: {new Date(task.deadline).toLocaleDateString()} {new Date(task.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                                        <span>Due: {(() => {
+                                          const d = new Date(task.deadline);
+                                          const hasTime = task.deadline.includes("T") && !task.deadline.endsWith("T00:00:00.000Z");
+                                          return hasTime ? `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : d.toLocaleDateString();
+                                        })()}</span>
                                         {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {new Date(task.createdAt).toLocaleDateString()}</span>}
                                         {task.status === "completed" && task.completedAt && <span className="text-success">Done: {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {new Date(task.completedAt).toLocaleDateString()}</span>}
                                         {task.actualTime && <span>Time: {task.actualTime}m</span>}

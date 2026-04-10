@@ -403,7 +403,11 @@ export default function TaskManagement() {
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Deadline</p>
-                              <p className="text-sm font-medium">{new Date(task.deadline).toLocaleDateString()} at {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="text-sm font-medium">{(() => {
+                                const d = new Date(task.deadline);
+                                const hasTime = task.deadline.includes("T") && !task.deadline.endsWith("T00:00:00.000Z");
+                                return hasTime ? `${d.toLocaleDateString()} at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : d.toLocaleDateString();
+                              })()}</p>
                             </div>
                             {task.expectedTime > 0 && (
                               <div>
