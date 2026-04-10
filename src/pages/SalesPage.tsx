@@ -24,12 +24,12 @@ export default function SalesPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", projectNumber: "", startDate: "", endDate: "", createdDate: "", createdTime: "" });
+  const [form, setForm] = useState({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "" });
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<SalesProject | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
-  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "", assignedDate: "", assignedTime: "" });
+  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "" });
 
   useEffect(() => { loadData(); }, []);
 
@@ -44,13 +44,9 @@ export default function SalesPage() {
 
   const handleAdd = async () => {
     if (!form.name.trim() || !form.projectNumber.trim() || !form.startDate || !form.endDate) return;
-    let createdAt = new Date().toISOString();
-    if (form.createdDate) {
-      const timeStr = form.createdTime || "00:00";
-      createdAt = new Date(`${form.createdDate}T${timeStr}`).toISOString();
-    }
+    const createdAt = form.createdAt ? new Date(form.createdAt).toISOString() : new Date().toISOString();
     await addSalesProject({ name: form.name.trim(), projectNumber: form.projectNumber.trim(), startDate: form.startDate, endDate: form.endDate, createdAt });
-    setForm({ name: "", projectNumber: "", startDate: "", endDate: "", createdDate: "", createdTime: "" });
+    setForm({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "" });
     setAddOpen(false);
     await loadData();
   };
@@ -63,33 +59,32 @@ export default function SalesPage() {
   const openAddTask = (project: SalesProject) => {
     setSelectedProject(project);
     setSelectedEmployee("");
-    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "", assignedDate: "", assignedTime: "" });
+    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "" });
     setAddTaskOpen(true);
   };
 
   const handleAddTask = async () => {
     if (!selectedProject || !selectedEmployee || !taskForm.description.trim()) return;
-    let assignedAt = new Date().toISOString();
-    if (taskForm.assignedDate) {
-      const timeStr = taskForm.assignedTime || "00:00";
-      assignedAt = new Date(`${taskForm.assignedDate}T${timeStr}`).toISOString();
-    }
+    const now = new Date().toISOString();
+    const deadline = taskForm.deadline
+      ? new Date(taskForm.deadline).toISOString()
+      : selectedProject.endDate;
     await storeAddTask({
       title: selectedProject.name,
       description: taskForm.description.trim(),
       assignedTo: selectedEmployee,
       projectId: undefined,
       expectedTime: taskForm.expectedTime ? parseInt(taskForm.expectedTime) : 0,
-      deadline: taskForm.deadline || selectedProject.endDate,
+      deadline,
       priority: taskForm.priority,
       status: "in-progress",
-      createdAt: assignedAt,
-      startedAt: assignedAt,
+      createdAt: now,
+      startedAt: now,
     });
     await addNotification({
       message: `New task assigned in sales project "${selectedProject.name}"`,
       read: false,
-      createdAt: assignedAt,
+      createdAt: now,
       forUser: selectedEmployee,
     });
     setAddTaskOpen(false);
@@ -202,7 +197,7 @@ export default function SalesPage() {
                                         </div>
                                       </div>
                                       <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                                        <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                                        <span>Due: {new Date(task.deadline).toLocaleDateString()} {new Date(task.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                                         {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {new Date(task.createdAt).toLocaleDateString()}</span>}
                                         {task.status === "completed" && task.completedAt && <span className="text-success">Done: {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {new Date(task.completedAt).toLocaleDateString()}</span>}
                                         {task.actualTime && <span>Time: {task.actualTime}m</span>}
@@ -249,16 +244,8 @@ export default function SalesPage() {
               <Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} min={form.startDate} />
             </div>
             <div className="space-y-2">
-              <Label>Created At — optional (defaults to now)</Label>
-              <div className="flex gap-2">
-                <Input type="date" value={form.createdDate} onChange={e => setForm(f => ({ ...f, createdDate: e.target.value }))} className="flex-1" />
-                <Input type="time" value={form.createdTime} onChange={e => setForm(f => ({ ...f, createdTime: e.target.value }))} className="w-32" />
-              </div>
-              {form.createdDate && form.createdTime && (
-                <p className="text-xs text-muted-foreground">
-                  {new Date(`${form.createdDate}T${form.createdTime}`).toLocaleString([], { dateStyle: "medium", timeStyle: "short", hour12: true })}
-                </p>
-              )}
+              <Label>Created At (optional — defaults to now)</Label>
+              <Input type="datetime-local" value={form.createdAt} onChange={e => setForm(f => ({ ...f, createdAt: e.target.value }))} />
             </div>
             <Button onClick={handleAdd} className="w-full" disabled={!form.name.trim() || !form.projectNumber.trim() || !form.startDate || !form.endDate}>
               Create Project
@@ -287,7 +274,7 @@ export default function SalesPage() {
             </div>
             <div className="space-y-2">
               <Label>Deadline</Label>
-              <Input type="date" value={taskForm.deadline} onChange={e => setTaskForm(f => ({ ...f, deadline: e.target.value }))} min={new Date().toISOString().split("T")[0]} />
+              <Input type="datetime-local" value={taskForm.deadline} onChange={e => setTaskForm(f => ({ ...f, deadline: e.target.value }))} min={new Date().toISOString().slice(0, 16)} />
             </div>
             <div className="space-y-2">
               <Label>Priority</Label>
@@ -303,18 +290,6 @@ export default function SalesPage() {
             <div className="space-y-2">
               <Label>Expected Time — optional (minutes)</Label>
               <Input type="number" value={taskForm.expectedTime} onChange={e => setTaskForm(f => ({ ...f, expectedTime: e.target.value }))} placeholder="e.g. 60" min="1" />
-            </div>
-            <div className="space-y-2">
-              <Label>Assigned At — optional (defaults to now)</Label>
-              <div className="flex gap-2">
-                <Input type="date" value={taskForm.assignedDate} onChange={e => setTaskForm(f => ({ ...f, assignedDate: e.target.value }))} className="flex-1" />
-                <Input type="time" value={taskForm.assignedTime} onChange={e => setTaskForm(f => ({ ...f, assignedTime: e.target.value }))} className="w-32" />
-              </div>
-              {taskForm.assignedDate && taskForm.assignedTime && (
-                <p className="text-xs text-muted-foreground">
-                  {new Date(`${taskForm.assignedDate}T${taskForm.assignedTime}`).toLocaleString([], { dateStyle: "medium", timeStyle: "short", hour12: true })}
-                </p>
-              )}
             </div>
             <Button onClick={handleAddTask} className="w-full" disabled={!selectedEmployee || !taskForm.description.trim()}>Assign Task</Button>
           </div>
