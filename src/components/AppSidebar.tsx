@@ -129,6 +129,14 @@ export function AppSidebar() {
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
         )}
+        {!collapsed && (
+          <div className="px-3 py-2 mt-1 border-t border-border/50">
+            <p className="text-xs text-center">
+              <span className="text-muted-foreground">Designed and Developed by </span>
+              <span className="font-semibold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">SolvixTech</span>
+            </p>
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
 
