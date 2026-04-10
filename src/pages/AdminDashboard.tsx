@@ -87,7 +87,7 @@ export default function AdminDashboard() {
       ? { ...task, deadline: tomorrowStr, rescheduleRequest: { ...task.rescheduleRequest, status: "approved" as const, adminResponse: "Rescheduled to next day" } }
       : { ...task, rescheduleRequest: { ...task.rescheduleRequest, status: "rejected" as const, adminResponse: "Reschedule rejected" } };
     await saveTasks([updatedTask]);
-    await addNotification({ message: `Your reschedule request for "${task.title}" has been ${approved ? "approved — rescheduled to tomorrow" : "rejected"}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
+    await addNotification({ message: `Your reschedule request for "${task.title}" has been ${approved ? "approved â€” rescheduled to tomorrow" : "rejected"}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
     await loadData();
   };
 
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
                     <span>Assigned to: {employee?.name}</span>
                     <span>Status: {task.status}</span>
                     <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                    {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                    {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>}
                   </div>
                 </CardContent>
               </Card>
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
                   <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
                   <div className="flex items-center gap-4 text-xs mb-2">
                     <span className="text-muted-foreground">By: {employee?.name}</span>
-                    <span className="text-muted-foreground">Completed: {new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-muted-foreground">Completed: {new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                     <span className="text-muted-foreground">Time: {task.actualTime}m</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-4 text-xs mb-2">
                     <span className="text-muted-foreground">By: {employee?.name}</span>
                     <span className="text-muted-foreground">Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                    {task.createdAt && <span className="text-muted-foreground">Assigned: {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                    {task.createdAt && <span className="text-muted-foreground">Assigned: {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>}
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-warning" />

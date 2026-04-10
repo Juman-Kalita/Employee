@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getSalesProjects, addNotification } from "@/lib/store";
 import { Task, Priority, TaskStatus, Employee, SalesProject } from "@/lib/types";
@@ -399,7 +399,7 @@ export default function TaskManagement() {
                           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Deadline</p>
@@ -527,7 +527,7 @@ export default function TaskManagement() {
                             <p className="text-xs font-semibold text-warning mb-1">Reason:</p>
                             <p className="text-sm">{task.cancellationRequest?.reason}</p>
                             <p className="text-xs text-muted-foreground mt-2">
-                              Reported: {new Date(task.cancellationRequest!.requestedAt).toLocaleDateString()} at {new Date(task.cancellationRequest!.requestedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              Reported: {new Date(task.cancellationRequest!.requestedAt).toLocaleDateString()} at {new Date(task.cancellationRequest!.requestedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
                             </p>
                           </div>
                         </div>
@@ -567,11 +567,11 @@ export default function TaskManagement() {
                         <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                            <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Completed On</p>
-                            <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
                           </div>
                           {task.expectedTime > 0 && (
                             <div>

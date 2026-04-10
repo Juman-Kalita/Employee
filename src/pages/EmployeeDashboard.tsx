@@ -192,7 +192,7 @@ export default function EmployeeDashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="rounded-xl bg-primary p-6 text-primary-foreground">
-        <h1 className="text-2xl font-bold">Welcome back, {user?.name?.split(" ")[0]}! 👋</h1>
+        <h1 className="text-2xl font-bold">Welcome back, {user?.name?.split(" ")[0]}! ðŸ‘‹</h1>
         <p className="text-primary-foreground/80 mt-1">Here's your productivity overview</p>
       </div>
 
@@ -391,7 +391,7 @@ export default function EmployeeDashboard() {
                               {task.priority}
                             </Badge>
                             <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 animate-pulse">
-                              ⏱ Active
+                              â± Active
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
@@ -399,11 +399,11 @@ export default function EmployeeDashboard() {
                           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Started On</p>
-                              <p className="text-sm font-medium">{startTime.toLocaleDateString()} at {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="text-sm font-medium">{startTime.toLocaleDateString()} at {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Deadline</p>
@@ -484,7 +484,7 @@ export default function EmployeeDashboard() {
                               {task.priority}
                             </Badge>
                             <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                              ✓ Completed
+                              âœ“ Completed
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
@@ -492,11 +492,11 @@ export default function EmployeeDashboard() {
                           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Completed On</p>
-                              <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Expected Time</p>
@@ -516,7 +516,7 @@ export default function EmployeeDashboard() {
                             </span>
                             {task.efficiency! >= 100 ? (
                               <span className="text-xs text-success ml-auto">
-                                ✓ Completed ahead of schedule
+                                âœ“ Completed ahead of schedule
                               </span>
                             ) : (
                               <span className="text-xs text-warning ml-auto">

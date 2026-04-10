@@ -158,7 +158,7 @@ export function EmployeeProfileDialog({
   const [localProjects, setLocalProjects] = useState<SalesProject[]>(projects);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [targetProject, setTargetProject] = useState<SalesProject | null>(null);
-  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "", assignedAt: "" });
+  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "", assignedDate: "", assignedTime: "" });
 
   useEffect(() => {
     if (employee) refreshData();
@@ -183,13 +183,17 @@ export function EmployeeProfileDialog({
 
   const openAddTask = (project: SalesProject) => {
     setTargetProject(project);
-    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "", assignedAt: "" });
+    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "", assignedDate: "", assignedTime: "" });
     setAddTaskOpen(true);
   };
 
   const handleAddTask = async () => {
     if (!targetProject || !taskForm.description.trim()) return;
-    const assignedAt = taskForm.assignedAt ? new Date(taskForm.assignedAt).toISOString() : new Date().toISOString();
+    let assignedAt = new Date().toISOString();
+    if (taskForm.assignedDate) {
+      const timeStr = taskForm.assignedTime || "00:00";
+      assignedAt = new Date(`${taskForm.assignedDate}T${timeStr}`).toISOString();
+    }
     await storeAddTask({
       title: targetProject.name,
       description: taskForm.description,
@@ -340,8 +344,16 @@ export function EmployeeProfileDialog({
               <Input type="number" value={taskForm.expectedTime} onChange={e => setTaskForm(f => ({ ...f, expectedTime: e.target.value }))} placeholder="e.g. 60" min="1" />
             </div>
             <div className="space-y-2">
-              <Label>Assigned At (optional — defaults to now)</Label>
-              <Input type="datetime-local" value={taskForm.assignedAt} onChange={e => setTaskForm(f => ({ ...f, assignedAt: e.target.value }))} />
+              <Label>Assigned At — optional (defaults to now)</Label>
+              <div className="flex gap-2">
+                <Input type="date" value={taskForm.assignedDate} onChange={e => setTaskForm(f => ({ ...f, assignedDate: e.target.value }))} className="flex-1" />
+                <Input type="time" value={taskForm.assignedTime} onChange={e => setTaskForm(f => ({ ...f, assignedTime: e.target.value }))} className="w-32" />
+              </div>
+              {taskForm.assignedDate && taskForm.assignedTime && (
+                <p className="text-xs text-muted-foreground">
+                  {new Date(`${taskForm.assignedDate}T${taskForm.assignedTime}`).toLocaleString([], { dateStyle: "medium", timeStyle: "short", hour12: true })}
+                </p>
+              )}
             </div>
             <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim()}>Add Task</Button>
           </div>

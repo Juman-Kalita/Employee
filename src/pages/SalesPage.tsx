@@ -24,12 +24,12 @@ export default function SalesPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "" });
+  const [form, setForm] = useState({ name: "", projectNumber: "", startDate: "", endDate: "", createdDate: "", createdTime: "" });
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<SalesProject | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
-  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "", assignedAt: "" });
+  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "", assignedDate: "", assignedTime: "" });
 
   useEffect(() => { loadData(); }, []);
 
@@ -44,9 +44,13 @@ export default function SalesPage() {
 
   const handleAdd = async () => {
     if (!form.name.trim() || !form.projectNumber.trim() || !form.startDate || !form.endDate) return;
-    const createdAt = form.createdAt ? new Date(form.createdAt).toISOString() : new Date().toISOString();
+    let createdAt = new Date().toISOString();
+    if (form.createdDate) {
+      const timeStr = form.createdTime || "00:00";
+      createdAt = new Date(`${form.createdDate}T${timeStr}`).toISOString();
+    }
     await addSalesProject({ name: form.name.trim(), projectNumber: form.projectNumber.trim(), startDate: form.startDate, endDate: form.endDate, createdAt });
-    setForm({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "" });
+    setForm({ name: "", projectNumber: "", startDate: "", endDate: "", createdDate: "", createdTime: "" });
     setAddOpen(false);
     await loadData();
   };
@@ -59,13 +63,17 @@ export default function SalesPage() {
   const openAddTask = (project: SalesProject) => {
     setSelectedProject(project);
     setSelectedEmployee("");
-    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "", assignedAt: "" });
+    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "", assignedDate: "", assignedTime: "" });
     setAddTaskOpen(true);
   };
 
   const handleAddTask = async () => {
     if (!selectedProject || !selectedEmployee || !taskForm.description.trim()) return;
-    const assignedAt = taskForm.assignedAt ? new Date(taskForm.assignedAt).toISOString() : new Date().toISOString();
+    let assignedAt = new Date().toISOString();
+    if (taskForm.assignedDate) {
+      const timeStr = taskForm.assignedTime || "00:00";
+      assignedAt = new Date(`${taskForm.assignedDate}T${timeStr}`).toISOString();
+    }
     await storeAddTask({
       title: selectedProject.name,
       description: taskForm.description.trim(),
@@ -241,8 +249,16 @@ export default function SalesPage() {
               <Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} min={form.startDate} />
             </div>
             <div className="space-y-2">
-              <Label>Created At (optional — defaults to now)</Label>
-              <Input type="datetime-local" value={form.createdAt} onChange={e => setForm(f => ({ ...f, createdAt: e.target.value }))} />
+              <Label>Created At — optional (defaults to now)</Label>
+              <div className="flex gap-2">
+                <Input type="date" value={form.createdDate} onChange={e => setForm(f => ({ ...f, createdDate: e.target.value }))} className="flex-1" />
+                <Input type="time" value={form.createdTime} onChange={e => setForm(f => ({ ...f, createdTime: e.target.value }))} className="w-32" />
+              </div>
+              {form.createdDate && form.createdTime && (
+                <p className="text-xs text-muted-foreground">
+                  {new Date(`${form.createdDate}T${form.createdTime}`).toLocaleString([], { dateStyle: "medium", timeStyle: "short", hour12: true })}
+                </p>
+              )}
             </div>
             <Button onClick={handleAdd} className="w-full" disabled={!form.name.trim() || !form.projectNumber.trim() || !form.startDate || !form.endDate}>
               Create Project
@@ -289,8 +305,16 @@ export default function SalesPage() {
               <Input type="number" value={taskForm.expectedTime} onChange={e => setTaskForm(f => ({ ...f, expectedTime: e.target.value }))} placeholder="e.g. 60" min="1" />
             </div>
             <div className="space-y-2">
-              <Label>Assigned At (optional — defaults to now)</Label>
-              <Input type="datetime-local" value={taskForm.assignedAt} onChange={e => setTaskForm(f => ({ ...f, assignedAt: e.target.value }))} />
+              <Label>Assigned At — optional (defaults to now)</Label>
+              <div className="flex gap-2">
+                <Input type="date" value={taskForm.assignedDate} onChange={e => setTaskForm(f => ({ ...f, assignedDate: e.target.value }))} className="flex-1" />
+                <Input type="time" value={taskForm.assignedTime} onChange={e => setTaskForm(f => ({ ...f, assignedTime: e.target.value }))} className="w-32" />
+              </div>
+              {taskForm.assignedDate && taskForm.assignedTime && (
+                <p className="text-xs text-muted-foreground">
+                  {new Date(`${taskForm.assignedDate}T${taskForm.assignedTime}`).toLocaleString([], { dateStyle: "medium", timeStyle: "short", hour12: true })}
+                </p>
+              )}
             </div>
             <Button onClick={handleAddTask} className="w-full" disabled={!selectedEmployee || !taskForm.description.trim()}>Assign Task</Button>
           </div>
