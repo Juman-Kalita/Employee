@@ -140,11 +140,11 @@ export default function InventoryPage() {
               </div>
               {form.machineSource === "none" && (
                 <div className="space-y-2">
-                  <Label>Machine Name</Label>
+                  <Label>Material Name</Label>
                   <Input
                     value={form.customMachine}
                     onChange={e => setForm(f => ({ ...f, customMachine: e.target.value }))}
-                    placeholder="Enter machine name"
+                    placeholder="Enter material name"
                   />
                 </div>
               )}
