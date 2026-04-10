@@ -19,6 +19,14 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // Inventory panel credentials
+    if (nameOrEmail === "inventory" && password === "1234") {
+      localStorage.setItem("worktrack_inventory_user", JSON.stringify({ id: "inventory", name: "Inventory", email: "" }));
+      navigate("/inventory-panel/home");
+      setLoading(false);
+      return;
+    }
     
     const result = await login(nameOrEmail, password);
     if (result.success) {
