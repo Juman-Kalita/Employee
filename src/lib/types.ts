@@ -17,6 +17,14 @@ export interface Project {
   createdAt: string;
 }
 
+export interface InventoryItem {
+  id: string;
+  description: string;
+  machineName: string;
+  arrivedAt: string;
+  createdAt: string;
+}
+
 export interface SalesProject {
   id: string;
   name: string;

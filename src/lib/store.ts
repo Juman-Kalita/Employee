@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Employee, Notification, Task, Project, SalesProject } from "./types";
+import { Employee, Notification, Task, Project, SalesProject, InventoryItem } from "./types";
 
 // Employees
 export async function getEmployees(): Promise<Employee[]> {
@@ -457,5 +457,37 @@ export async function completeSalesProject(id: string): Promise<boolean> {
     .update({ status: 'completed', completed_at: new Date().toISOString() })
     .eq('id', id);
   if (error) { console.error('Error completing sales project:', error); return false; }
+  return true;
+}
+
+// Inventory
+export async function getInventory(): Promise<InventoryItem[]> {
+  const { data, error } = await supabase
+    .from('inventory')
+    .select('*')
+    .order('arrived_at', { ascending: false });
+  if (error) { console.error('Error fetching inventory:', error); return []; }
+  return data.map(i => ({
+    id: i.id,
+    description: i.description,
+    machineName: i.machine_name,
+    arrivedAt: i.arrived_at,
+    createdAt: i.created_at,
+  }));
+}
+
+export async function addInventoryItem(item: Omit<InventoryItem, 'id' | 'createdAt'>): Promise<InventoryItem | null> {
+  const { data, error } = await supabase
+    .from('inventory')
+    .insert({ description: item.description, machine_name: item.machineName, arrived_at: item.arrivedAt })
+    .select()
+    .single();
+  if (error) { console.error('Error adding inventory item:', error); return null; }
+  return { id: data.id, description: data.description, machineName: data.machine_name, arrivedAt: data.arrived_at, createdAt: data.created_at };
+}
+
+export async function deleteInventoryItem(id: string): Promise<boolean> {
+  const { error } = await supabase.from('inventory').delete().eq('id', id);
+  if (error) { console.error('Error deleting inventory item:', error); return false; }
   return true;
 }
