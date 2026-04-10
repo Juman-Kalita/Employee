@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { getInventory, addInventoryItem, deleteInventoryItem, getSalesProjects } from "@/lib/store";
-import { useAuth } from "@/lib/auth";
 import { InventoryItem, SalesProject } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,9 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Package, Plus, Trash2, Calendar, Cpu } from "lucide-react";
 
-export default function InventoryPage() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+export default function InventoryPage({ isAdmin: isAdminProp }: { isAdmin?: boolean }) {
+  const isAdmin = isAdminProp ?? false;
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [projects, setProjects] = useState<SalesProject[]>([]);
   const [loading, setLoading] = useState(true);

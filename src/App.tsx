@@ -18,10 +18,17 @@ import AnalyticsPage from "@/pages/AnalyticsPage";
 import SalesPage from "@/pages/SalesPage";
 import ServicePage from "@/pages/ServicePage";
 import InventoryPage from "@/pages/InventoryPage";
+import InventoryLoginPage from "@/pages/InventoryLoginPage";
+import InventoryPanelLayout from "@/pages/InventoryPanelLayout";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function InventoryWrapper() {
+  const { user } = useAuth();
+  return <InventoryPage isAdmin={user?.role === "admin"} />;
+}
 
 function DashboardRouter() {
   const { user } = useAuth();
@@ -39,13 +46,17 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/inventory-panel" element={<InventoryLoginPage />} />
+              <Route path="/inventory-panel" element={<InventoryPanelLayout />}>
+                <Route path="home" element={<InventoryPage isAdmin={true} />} />
+              </Route>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<DashboardRouter />} />
                 <Route path="/tasks" element={<TaskManagement />} />
                 <Route path="/sales" element={<SalesPage />} />
                 <Route path="/service" element={<ServicePage />} />
-                <Route path="/inventory" element={<InventoryPage />} />
+                <Route path="/inventory" element={<InventoryWrapper />} />
                 <Route path="/extensions" element={<ExtensionRequests />} />
                 <Route path="/attendance" element={<AttendancePage />} />
                 <Route path="/employees" element={<EmployeeManagement />} />
