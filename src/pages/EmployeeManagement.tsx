@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { getEmployees, addEmployee, updateEmployee, deleteEmployee, getTasks, getProjects, saveTasks, addNotification } from "@/lib/store";
-import { Employee, Task, Project } from "@/lib/types";
+import { getEmployees, addEmployee, updateEmployee, deleteEmployee, getTasks, getSalesProjects, saveTasks, addNotification } from "@/lib/store";
+import { Employee, Task, SalesProject } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { EmployeeProfileDialog } from "@/components/EmployeeProfileDialog";
 export default function EmployeeManagement() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<SalesProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -27,7 +27,7 @@ export default function EmployeeManagement() {
 
   const loadData = async () => {
     setLoading(true);
-    const [empData, taskData, projData] = await Promise.all([getEmployees(), getTasks(), getProjects()]);
+    const [empData, taskData, projData] = await Promise.all([getEmployees(), getTasks(), getSalesProjects()]);
     setEmployees(empData);
     setTasks(taskData);
     setProjects(projData);

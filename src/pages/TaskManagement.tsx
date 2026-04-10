@@ -1,7 +1,7 @@
 ﻿import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getProjects, addNotification } from "@/lib/store";
-import { Task, Priority, TaskStatus, Employee, Project } from "@/lib/types";
+import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getSalesProjects, addNotification } from "@/lib/store";
+import { Task, Priority, TaskStatus, Employee, SalesProject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ export default function TaskManagement() {
   const isAdmin = user?.role === "admin";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<SalesProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -50,7 +50,7 @@ export default function TaskManagement() {
 
   const loadData = async () => {
     setLoading(true);
-    const [tasksData, employeesData, projectsData] = await Promise.all([getTasks(), getEmployees(), getProjects()]);
+    const [tasksData, employeesData, projectsData] = await Promise.all([getTasks(), getEmployees(), getSalesProjects()]);
     setTasks(tasksData);
     setEmployees(employeesData);
     setProjects(projectsData);

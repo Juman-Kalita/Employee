@@ -1,10 +1,10 @@
 import { useMemo, useEffect, useState } from "react";
-import { getTasks, getEmployees, getProjects, saveTasks, addNotification } from "@/lib/store";
+import { getTasks, getEmployees, getSalesProjects, saveTasks, addNotification } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Users, ListTodo, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend } from "recharts";
-import { Task, Employee, Project, Priority } from "@/lib/types";
+import { Task, Employee, SalesProject, Priority } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -21,7 +21,7 @@ const priorityColors: Record<Priority, string> = {
 export default function AdminDashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<SalesProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"employees" | "tasks" | "completed" | "inProgress">("employees");
@@ -31,7 +31,7 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     setLoading(true);
-    const [tasksData, employeesData, projectsData] = await Promise.all([getTasks(), getEmployees(), getProjects()]);
+    const [tasksData, employeesData, projectsData] = await Promise.all([getTasks(), getEmployees(), getSalesProjects()]);
     setTasks(tasksData);
     setEmployees(employeesData);
     setProjects(projectsData);

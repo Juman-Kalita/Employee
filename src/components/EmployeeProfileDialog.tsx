@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Employee, Task, Project, Priority } from "@/lib/types";
-import { addTask as storeAddTask, addProject, addNotification, getTasks, getProjects } from "@/lib/store";
+import { Employee, Task, SalesProject, Priority } from "@/lib/types";
+import { addTask as storeAddTask, addNotification, getTasks, getSalesProjects } from "@/lib/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Clock, TrendingUp, Plus, ChevronDown, ChevronRight, Folder, ListTodo, CalendarClock } from "lucide-react";
+import { CheckCircle, Clock, TrendingUp, Plus, ChevronDown, ChevronRight, Briefcase, ListTodo, CalendarClock } from "lucide-react";
 
 const priorityColors: Record<Priority, string> = {
   high: "bg-destructive/10 text-destructive border-destructive/20",
@@ -78,14 +78,14 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
           }`}>
             <div className="flex items-center gap-1 font-medium mb-1">
               <CalendarClock className="h-3 w-3" />
-              {task.rescheduleRequest.status === "pending" ? "Incomplete Task Reason — Pending" :
+              {task.rescheduleRequest.status === "pending" ? "Incomplete Task Reason - Pending" :
                task.rescheduleRequest.status === "approved" ? `Rescheduled to ${new Date(task.deadline).toLocaleDateString()}` :
                "Reschedule Rejected"}
             </div>
             <p className="text-muted-foreground mb-1">{task.rescheduleRequest.reason}</p>
             {task.rescheduleRequest.status === "pending" && onRescheduleApproval && (
               <div className="flex gap-2 mt-1">
-                <Button size="sm" className="h-6 text-xs" onClick={() => onRescheduleApproval(task.id, true)}>Approve & Reschedule</Button>
+                <Button size="sm" className="h-6 text-xs" onClick={() => onRescheduleApproval(task.id, true)}>Approve and Reschedule</Button>
                 <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => onRescheduleApproval(task.id, false)}>Reject</Button>
               </div>
             )}
@@ -96,23 +96,24 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
   );
 }
 
-function ProjectRow({ project, tasks, onAddTask, onExtensionApproval, onRescheduleApproval }: {
-  project: Project;
+function SalesProjectRow({ project, tasks, onAddTask, onExtensionApproval, onRescheduleApproval }: {
+  project: SalesProject;
   tasks: Task[];
-  onAddTask: (projectId: string, projectName: string) => void;
+  onAddTask: (project: SalesProject) => void;
   onExtensionApproval?: (id: string, approved: boolean) => void;
   onRescheduleApproval?: (id: string, approved: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const projectTasks = tasks.filter(t => t.projectId === project.id);
+  const projectTasks = tasks.filter(t => t.title === project.name);
   const completed = projectTasks.filter(t => t.status === "completed").length;
 
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpanded(e => !e)}>
         {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-        <Folder className="h-4 w-4 text-primary" />
+        <Briefcase className="h-4 w-4 text-primary" />
         <span className="font-medium flex-1">{project.name}</span>
+        <span className="text-xs text-muted-foreground mr-2">#{project.projectNumber}</span>
         <Badge variant="outline" className="text-xs">{completed}/{projectTasks.length} done</Badge>
       </div>
       {expanded && (
@@ -121,7 +122,7 @@ function ProjectRow({ project, tasks, onAddTask, onExtensionApproval, onReschedu
           {projectTasks.map(task => (
             <TaskCard key={task.id} task={task} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />
           ))}
-          <Button size="sm" variant="outline" className="w-full gap-2 mt-1" onClick={e => { e.stopPropagation(); onAddTask(project.id, project.name); }}>
+          <Button size="sm" variant="outline" className="w-full gap-2 mt-1" onClick={e => { e.stopPropagation(); onAddTask(project); }}>
             <Plus className="h-3 w-3" /> Add Task
           </Button>
         </div>
@@ -133,7 +134,7 @@ function ProjectRow({ project, tasks, onAddTask, onExtensionApproval, onReschedu
 export interface EmployeeProfileDialogProps {
   employee: Employee | null;
   tasks: Task[];
-  projects: Project[];
+  projects: SalesProject[];
   onClose: () => void;
   onDataChange: () => void;
   onExtensionApproval?: (taskId: string, approved: boolean) => void;
@@ -150,12 +151,9 @@ export function EmployeeProfileDialog({
   onRescheduleApproval,
 }: EmployeeProfileDialogProps) {
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
-  const [localProjects, setLocalProjects] = useState<Project[]>(projects);
-  const [addProjectOpen, setAddProjectOpen] = useState(false);
-  const [projectName, setProjectName] = useState("");
+  const [localProjects, setLocalProjects] = useState<SalesProject[]>(projects);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
-  const [targetProjectId, setTargetProjectId] = useState("");
-  const [targetProjectName, setTargetProjectName] = useState("");
+  const [targetProject, setTargetProject] = useState<SalesProject | null>(null);
   const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "" });
 
   useEffect(() => {
@@ -163,7 +161,7 @@ export function EmployeeProfileDialog({
   }, [employee?.id]);
 
   const refreshData = async () => {
-    const [t, p] = await Promise.all([getTasks(), getProjects()]);
+    const [t, p] = await Promise.all([getTasks(), getSalesProjects()]);
     setLocalTasks(t);
     setLocalProjects(p);
     onDataChange();
@@ -172,45 +170,35 @@ export function EmployeeProfileDialog({
   if (!employee) return null;
 
   const empTasks = localTasks.filter(t => t.assignedTo === employee.id);
-  const empProjects = localProjects.filter(p => p.assignedTo === employee.id);
   const completed = empTasks.filter(t => t.status === "completed").length;
   const inProgress = empTasks.filter(t => t.status === "in-progress").length;
   const avgEfficiency = completed > 0
     ? Math.round(empTasks.filter(t => t.status === "completed").reduce((s, t) => s + Math.min(100, t.efficiency || 0), 0) / completed)
     : 0;
-  const standaloneTasks = empTasks.filter(t => !t.projectId);
+  const standaloneTasks = empTasks.filter(t => !localProjects.some(p => p.name === t.title));
 
-  const handleAddProject = async () => {
-    if (!projectName.trim()) return;
-    await addProject({ name: projectName.trim(), assignedTo: employee.id, createdAt: new Date().toISOString() });
-    setProjectName("");
-    setAddProjectOpen(false);
-    await refreshData();
-  };
-
-  const openAddTask = (projectId: string, projName: string) => {
-    setTargetProjectId(projectId);
-    setTargetProjectName(projName);
+  const openAddTask = (project: SalesProject) => {
+    setTargetProject(project);
     setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "" });
     setAddTaskOpen(true);
   };
 
   const handleAddTask = async () => {
-    if (!taskForm.description.trim()) return;
+    if (!targetProject || !taskForm.description.trim()) return;
     const now = new Date().toISOString();
     await storeAddTask({
-      title: targetProjectName,
+      title: targetProject.name,
       description: taskForm.description,
       assignedTo: employee.id,
-      projectId: targetProjectId,
+      projectId: undefined,
       expectedTime: taskForm.expectedTime ? parseInt(taskForm.expectedTime) : 0,
-      deadline: taskForm.deadline || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
+      deadline: taskForm.deadline || targetProject.endDate,
       priority: taskForm.priority,
       status: "in-progress",
       createdAt: now,
       startedAt: now,
     });
-    await addNotification({ message: `New task assigned in project "${targetProjectName}"`, read: false, createdAt: now, forUser: employee.id });
+    await addNotification({ message: `New task assigned in project "${targetProject.name}"`, read: false, createdAt: now, forUser: employee.id });
     setAddTaskOpen(false);
     await refreshData();
   };
@@ -290,13 +278,19 @@ export function EmployeeProfileDialog({
 
           <div className="mt-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold flex items-center gap-2"><Folder className="h-4 w-4" /> Projects ({empProjects.length})</h3>
-              <Button size="sm" className="gap-1" onClick={() => setAddProjectOpen(true)}><Plus className="h-3 w-3" /> Add Project</Button>
+              <h3 className="font-semibold flex items-center gap-2"><Briefcase className="h-4 w-4" /> Projects ({localProjects.length})</h3>
             </div>
-            {empProjects.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No projects yet</p>}
+            {localProjects.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No sales projects yet. Add them from the Sales tab.</p>}
             <div className="space-y-2">
-              {empProjects.map(project => (
-                <ProjectRow key={project.id} project={project} tasks={localTasks} onAddTask={openAddTask} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />
+              {localProjects.map(project => (
+                <SalesProjectRow
+                  key={project.id}
+                  project={project}
+                  tasks={localTasks.filter(t => t.assignedTo === employee.id)}
+                  onAddTask={openAddTask}
+                  onExtensionApproval={onExtensionApproval}
+                  onRescheduleApproval={onRescheduleApproval}
+                />
               ))}
             </div>
           </div>
@@ -314,22 +308,9 @@ export function EmployeeProfileDialog({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={addProjectOpen} onOpenChange={setAddProjectOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add Project</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label>Project Name</Label>
-              <Input value={projectName} onChange={e => setProjectName(e.target.value)} placeholder="e.g. Website Redesign" onKeyDown={e => e.key === "Enter" && handleAddProject()} />
-            </div>
-            <Button onClick={handleAddProject} className="w-full" disabled={!projectName.trim()}>Create Project</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={addTaskOpen} onOpenChange={setAddTaskOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add Task to "{targetProjectName}"</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Add Task to "{targetProject?.name}"</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label>Description</Label>

@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Employee, Notification, Task, Project } from "./types";
+import { Employee, Notification, Task, Project, SalesProject } from "./types";
 
 // Employees
 export async function getEmployees(): Promise<Employee[]> {
@@ -413,5 +413,38 @@ export async function markAttendanceLogout(id: string, status: 'present' | 'inco
     .update({ logout_time: new Date().toISOString(), status, notes: notes || null })
     .eq('id', id);
   if (error) { console.error('Error marking logout:', error); return false; }
+  return true;
+}
+
+// Sales Projects
+export async function getSalesProjects(): Promise<SalesProject[]> {
+  const { data, error } = await supabase
+    .from('sales_projects')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) { console.error('Error fetching sales projects:', error); return []; }
+  return data.map(p => ({
+    id: p.id,
+    name: p.name,
+    projectNumber: p.project_number,
+    startDate: p.start_date,
+    endDate: p.end_date,
+    createdAt: p.created_at,
+  }));
+}
+
+export async function addSalesProject(project: Omit<SalesProject, 'id' | 'createdAt'>): Promise<SalesProject | null> {
+  const { data, error } = await supabase
+    .from('sales_projects')
+    .insert({ name: project.name, project_number: project.projectNumber, start_date: project.startDate, end_date: project.endDate })
+    .select()
+    .single();
+  if (error) { console.error('Error adding sales project:', error); return null; }
+  return { id: data.id, name: data.name, projectNumber: data.project_number, startDate: data.start_date, endDate: data.end_date, createdAt: data.created_at };
+}
+
+export async function deleteSalesProject(id: string): Promise<boolean> {
+  const { error } = await supabase.from('sales_projects').delete().eq('id', id);
+  if (error) { console.error('Error deleting sales project:', error); return false; }
   return true;
 }

@@ -15,6 +15,7 @@ import TaskManagement from "@/pages/TaskManagement";
 import ExtensionRequests from "@/pages/ExtensionRequests";
 import AttendancePage from "@/pages/AttendancePage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
+import SalesPage from "@/pages/SalesPage";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 
@@ -40,6 +41,7 @@ const App = () => (
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<DashboardRouter />} />
                 <Route path="/tasks" element={<TaskManagement />} />
+                <Route path="/sales" element={<SalesPage />} />
                 <Route path="/extensions" element={<ExtensionRequests />} />
                 <Route path="/attendance" element={<AttendancePage />} />
                 <Route path="/employees" element={<EmployeeManagement />} />

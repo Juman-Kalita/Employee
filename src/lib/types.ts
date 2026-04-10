@@ -17,6 +17,15 @@ export interface Project {
   createdAt: string;
 }
 
+export interface SalesProject {
+  id: string;
+  name: string;
+  projectNumber: string;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
