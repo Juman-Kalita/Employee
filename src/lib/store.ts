@@ -430,6 +430,8 @@ export async function getSalesProjects(): Promise<SalesProject[]> {
     startDate: p.start_date,
     endDate: p.end_date,
     createdAt: p.created_at,
+    status: (p.status || 'active') as 'active' | 'completed',
+    completedAt: p.completed_at || undefined,
   }));
 }
 
@@ -446,5 +448,14 @@ export async function addSalesProject(project: Omit<SalesProject, 'id' | 'create
 export async function deleteSalesProject(id: string): Promise<boolean> {
   const { error } = await supabase.from('sales_projects').delete().eq('id', id);
   if (error) { console.error('Error deleting sales project:', error); return false; }
+  return true;
+}
+
+export async function completeSalesProject(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('sales_projects')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) { console.error('Error completing sales project:', error); return false; }
   return true;
 }

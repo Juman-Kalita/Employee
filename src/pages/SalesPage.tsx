@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getSalesProjects, addSalesProject, deleteSalesProject, getEmployees, getTasks, getProjects, saveTasks, addNotification, addTask as storeAddTask } from "@/lib/store";
+import { getSalesProjects, addSalesProject, deleteSalesProject, completeSalesProject, getEmployees, getTasks, getProjects, saveTasks, addNotification, addTask as storeAddTask } from "@/lib/store";
 import { SalesProject, Employee, Task, Priority } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,11 @@ export default function SalesPage() {
     await loadData();
   };
 
+  const handleComplete = async (id: string) => {
+    await completeSalesProject(id);
+    await loadData();
+  };
+
   const openAddTask = (project: SalesProject) => {
     setSelectedProject(project);
     setSelectedEmployee("");
@@ -94,6 +99,8 @@ export default function SalesPage() {
   const getProjectTasks = (project: SalesProject) =>
     tasks.filter(t => t.title === project.name);
 
+  const activeProjects = salesProjects.filter(p => p.status !== "completed");
+
   if (loading) return <div className="flex items-center justify-center h-96"><p className="text-muted-foreground">Loading...</p></div>;
 
   return (
@@ -108,16 +115,16 @@ export default function SalesPage() {
         </Button>
       </div>
 
-      {salesProjects.length === 0 ? (
+      {activeProjects.length === 0 ? (
         <Card className="p-12">
           <div className="text-center text-muted-foreground">
             <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No sales projects yet</p>
+            <p>No active sales projects</p>
           </div>
         </Card>
       ) : (
         <div className="space-y-4">
-          {salesProjects.map(project => {
+          {activeProjects.map(project => {
             const projectTasks = getProjectTasks(project);
             const completed = projectTasks.filter(t => t.status === "completed").length;
             const inProgress = projectTasks.filter(t => t.status === "in-progress").length;
@@ -151,6 +158,9 @@ export default function SalesPage() {
                     <div className="flex gap-2 shrink-0">
                       <Button size="sm" className="gap-1" onClick={() => openAddTask(project)}>
                         <Plus className="h-3.5 w-3.5" /> Add Task
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-1 text-success border-success/30 hover:bg-success/10" onClick={() => handleComplete(project.id)}>
+                        <CheckCircle className="h-3.5 w-3.5" /> Complete
                       </Button>
                       <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 w-8 p-0" onClick={() => handleDelete(project.id)}>
                         <Trash2 className="h-4 w-4" />

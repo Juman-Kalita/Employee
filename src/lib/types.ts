@@ -24,6 +24,8 @@ export interface SalesProject {
   startDate: string;
   endDate: string;
   createdAt: string;
+  status: "active" | "completed";
+  completedAt?: string;
 }
 
 export interface Task {
