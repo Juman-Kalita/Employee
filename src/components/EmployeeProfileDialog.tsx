@@ -158,7 +158,7 @@ export function EmployeeProfileDialog({
   const [localProjects, setLocalProjects] = useState<SalesProject[]>(projects);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [targetProject, setTargetProject] = useState<SalesProject | null>(null);
-  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "" });
+  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority });
 
   useEffect(() => {
     if (employee) refreshData();
@@ -183,7 +183,7 @@ export function EmployeeProfileDialog({
 
   const openAddTask = (project: SalesProject) => {
     setTargetProject(project);
-    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "" });
+    setTaskForm({ description: "", deadline: "", priority: "medium" });
     setAddTaskOpen(true);
   };
 
@@ -198,7 +198,7 @@ export function EmployeeProfileDialog({
       description: taskForm.description,
       assignedTo: employee.id,
       projectId: undefined,
-      expectedTime: taskForm.expectedTime ? parseInt(taskForm.expectedTime) : 0,
+      expectedTime: 0,
       deadline,
       priority: taskForm.priority,
       status: "in-progress",
@@ -337,10 +337,6 @@ export function EmployeeProfileDialog({
                   <SelectItem value="high">High</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Expected Time - optional (minutes)</Label>
-              <Input type="number" value={taskForm.expectedTime} onChange={e => setTaskForm(f => ({ ...f, expectedTime: e.target.value }))} placeholder="e.g. 60" min="1" />
             </div>
             <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim()}>Add Task</Button>
           </div>

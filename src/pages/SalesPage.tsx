@@ -29,7 +29,7 @@ export default function SalesPage() {
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<SalesProject | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
-  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, expectedTime: "" });
+  const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority });
 
   useEffect(() => { loadData(); }, []);
 
@@ -59,7 +59,7 @@ export default function SalesPage() {
   const openAddTask = (project: SalesProject) => {
     setSelectedProject(project);
     setSelectedEmployee("");
-    setTaskForm({ description: "", deadline: "", priority: "medium", expectedTime: "" });
+    setTaskForm({ description: "", deadline: "", priority: "medium" });
     setAddTaskOpen(true);
   };
 
@@ -74,7 +74,7 @@ export default function SalesPage() {
       description: taskForm.description.trim(),
       assignedTo: selectedEmployee,
       projectId: undefined,
-      expectedTime: taskForm.expectedTime ? parseInt(taskForm.expectedTime) : 0,
+      expectedTime: 0,
       deadline,
       priority: taskForm.priority,
       status: "in-progress",
@@ -286,10 +286,6 @@ export default function SalesPage() {
                   <SelectItem value="high">High</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Expected Time — optional (minutes)</Label>
-              <Input type="number" value={taskForm.expectedTime} onChange={e => setTaskForm(f => ({ ...f, expectedTime: e.target.value }))} placeholder="e.g. 60" min="1" />
             </div>
             <Button onClick={handleAddTask} className="w-full" disabled={!selectedEmployee || !taskForm.description.trim()}>Assign Task</Button>
           </div>
