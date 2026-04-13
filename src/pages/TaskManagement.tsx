@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getSalesProjects, addNotification } from "@/lib/store";
+import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getSalesProjects, addNotification, deleteTask } from "@/lib/store";
 import { Task, Priority, TaskStatus, Employee, SalesProject } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, CheckCircle, Clock, TrendingUp, User, ChevronRight, ListTodo, AlertCircle, PlusCircle } from "lucide-react";
+import { Plus, Search, CheckCircle, Clock, TrendingUp, User, ChevronRight, ListTodo, AlertCircle, PlusCircle, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { EmployeeProfileDialog } from "@/components/EmployeeProfileDialog";
@@ -844,17 +844,24 @@ export default function TaskManagement() {
             return (
               <Card key={task.id} className={`border-l-4 ${isInProgress ? "border-l-warning" : "border-l-success"}`}>
                 <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <p className="font-medium">{task.description || task.title}</p>
-                    <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
-                    <Badge variant="outline" className={isInProgress ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"}>{isInProgress ? "Active" : "Done"}</Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{emp?.name || "Unknown"} — {emp?.role}</span>
-                    <span>Project: {task.title}</span>
-                    <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                    {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
-                    {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-medium">{task.description || task.title}</p>
+                        <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
+                        <Badge variant="outline" className={isInProgress ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"}>{isInProgress ? "Active" : "Done"}</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><User className="h-3 w-3" />{emp?.name || "Unknown"} — {emp?.role}</span>
+                        <span>Project: {task.title}</span>
+                        <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                        {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+                        {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 w-8 p-0 shrink-0" onClick={async () => { await deleteTask(task.id); await loadData(); }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

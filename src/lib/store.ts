@@ -247,6 +247,12 @@ export async function saveTasks(tasks: Task[]): Promise<boolean> {
   return true;
 }
 
+export async function deleteTask(id: string): Promise<boolean> {
+  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  if (error) { console.error('Error deleting task:', error); return false; }
+  return true;
+}
+
 // Notifications
 export async function getNotifications(): Promise<Notification[]> {
   const { data, error } = await supabase
