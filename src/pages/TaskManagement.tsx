@@ -392,7 +392,7 @@ export default function TaskManagement() {
                               {task.priority}
                             </Badge>
                             <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 animate-pulse">
-                              ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒâ€šÃ‚Â± Active
+                              â± Active
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
@@ -460,12 +460,12 @@ export default function TaskManagement() {
                           </Button>
                           {task.rescheduleRequest?.status === "approved" ? (
                             <div className="text-center p-2 bg-success/10 border border-success/20 rounded text-xs text-success font-medium">
-                              ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Rescheduled for next day
+                              ✓ Rescheduled for next day
                               <p className="font-bold mt-0.5">{new Date(task.deadline).toLocaleDateString()}</p>
                             </div>
                           ) : task.rescheduleRequest?.status === "pending" ? (
                             <div className="text-center p-2 bg-primary/5 border border-primary/20 rounded text-xs text-primary">
-                              ÃƒÂ¢Ã‚ÂÃ‚Â³ Reschedule pending approval
+                              ⏳ Reschedule pending approval
                             </div>
                           ) : !task.extensionRequest && !task.cancellationRequest && (
                             <>
@@ -564,7 +564,7 @@ export default function TaskManagement() {
                             {task.priority}
                           </Badge>
                           <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                            ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Completed
+                            âœ“ Completed
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
@@ -599,7 +599,7 @@ export default function TaskManagement() {
                           </span>
                           {task.efficiency! >= 100 ? (
                             <span className="text-xs text-success ml-auto">
-                              ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Completed ahead of schedule
+                              âœ“ Completed ahead of schedule
                             </span>
                           ) : (
                             <span className="text-xs text-warning ml-auto">
@@ -826,18 +826,8 @@ export default function TaskManagement() {
           </p>
         </div>
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-          <button
-            onClick={() => setAdminView("employees")}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "employees" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Employees
-          </button>
-          <button
-            onClick={() => setAdminView("tasks")}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "tasks" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Tasks
-          </button>
+          <button onClick={() => setAdminView("employees")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "employees" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Employees</button>
+          <button onClick={() => setAdminView("tasks")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "tasks" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Tasks</button>
         </div>
       </div>
 
@@ -846,55 +836,40 @@ export default function TaskManagement() {
         <Input placeholder={adminView === "employees" ? "Search employees..." : "Search tasks..."} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      {adminView === "tasks" ? (
+      {adminView === "tasks" && (
         <div className="space-y-3">
-          {tasks.filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.description?.toLowerCase().includes(search.toLowerCase()) || employees.find(e => e.id === t.assignedTo)?.name.toLowerCase().includes(search.toLowerCase())).map(task => {
+          {tasks.filter(t => !search || (t.description || t.title).toLowerCase().includes(search.toLowerCase()) || employees.find(e => e.id === t.assignedTo)?.name.toLowerCase().includes(search.toLowerCase())).map(task => {
             const emp = employees.find(e => e.id === task.assignedTo);
             const isInProgress = task.status === "in-progress";
             return (
               <Card key={task.id} className={`border-l-4 ${isInProgress ? "border-l-warning" : "border-l-success"}`}>
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="font-medium">{task.description || task.title}</p>
-                        <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
-                        <Badge variant="outline" className={isInProgress ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"}>
-                          {isInProgress ? "Active" : "Done"}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {emp?.name || "Unknown"} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {emp?.role}
-                        </span>
-                        <span>Project: {task.title}</span>
-                        <span>Due: {(() => {
-                          const d = new Date(task.deadline);
-                          const hasTime = task.deadline.includes("T") && !task.deadline.endsWith("T00:00:00.000Z");
-                          return hasTime ? `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : d.toLocaleDateString();
-                        })()}</span>
-                        {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
-                        {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <p className="font-medium">{task.description || task.title}</p>
+                    <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
+                    <Badge variant="outline" className={isInProgress ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"}>{isInProgress ? "Active" : "Done"}</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><User className="h-3 w-3" />{emp?.name || "Unknown"} — {emp?.role}</span>
+                    <span>Project: {task.title}</span>
+                    <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                    {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+                    {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
                   </div>
                 </CardContent>
               </Card>
             );
           })}
           {tasks.length === 0 && (
-            <Card className="p-12">
-              <div className="text-center text-muted-foreground">
-                <ListTodo className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No tasks found</p>
-              </div>
-            </Card>
+            <Card className="p-12"><div className="text-center text-muted-foreground"><ListTodo className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>No tasks found</p></div></Card>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredStats.map(stat => (
+      )}
+
+      {adminView === "employees" && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredStats.map(stat => (
           <Card key={stat.employee.id} className="hover:shadow-lg transition-all cursor-pointer group" onClick={() => { setSelectedEmployee(stat.employee); setAddTaskOpen(false); }}>
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
@@ -962,7 +937,8 @@ export default function TaskManagement() {
           </div>
         </Card>
       )}
-      )
+        </>
+      )}
 
       {/* Employee Profile Dialog */}
       <EmployeeProfileDialog
@@ -982,7 +958,7 @@ export default function TaskManagement() {
             ? { ...task, deadline: tomorrowStr, rescheduleRequest: { ...task.rescheduleRequest, status: "approved" as const, adminResponse: "Rescheduled to next day" } }
             : { ...task, rescheduleRequest: { ...task.rescheduleRequest, status: "rejected" as const, adminResponse: "Reschedule rejected" } };
           await saveTasks([updatedTask]);
-          await addNotification({ message: `Your reschedule request for "${task.title}" has been ${approved ? "approved ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â rescheduled to tomorrow" : "rejected"}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
+          await addNotification({ message: `Your reschedule request for "${task.title}" has been ${approved ? "approved — rescheduled to tomorrow" : "rejected"}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
           await loadData();
         }}
       />
