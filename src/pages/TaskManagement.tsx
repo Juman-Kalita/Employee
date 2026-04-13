@@ -43,6 +43,7 @@ export default function TaskManagement() {
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [otherTaskOpen, setOtherTaskOpen] = useState(false);
   const [otherTaskForm, setOtherTaskForm] = useState({ title: "", description: "", actualTime: "", date: new Date().toISOString().split("T")[0] });
+  const [adminView, setAdminView] = useState<"employees" | "tasks">("employees");
 
   useEffect(() => {
     loadData();
@@ -817,18 +818,82 @@ export default function TaskManagement() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold">Task Management</h1>
-        <p className="text-muted-foreground">Click on an employee to view their profile and assign tasks</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Task Management</h1>
+          <p className="text-muted-foreground">
+            {adminView === "employees" ? "Click on an employee to view their profile and assign tasks" : "All tasks and their assigned employees"}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          <button
+            onClick={() => setAdminView("employees")}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "employees" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Employees
+          </button>
+          <button
+            onClick={() => setAdminView("tasks")}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "tasks" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Tasks
+          </button>
+        </div>
       </div>
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search employees..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder={adminView === "employees" ? "Search employees..." : "Search tasks..."} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      {/* Employee Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {adminView === "tasks" ? (
+        <div className="space-y-3">
+          {tasks.filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.description?.toLowerCase().includes(search.toLowerCase()) || employees.find(e => e.id === t.assignedTo)?.name.toLowerCase().includes(search.toLowerCase())).map(task => {
+            const emp = employees.find(e => e.id === task.assignedTo);
+            const isInProgress = task.status === "in-progress";
+            return (
+              <Card key={task.id} className={`border-l-4 ${isInProgress ? "border-l-warning" : "border-l-success"}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="font-medium">{task.description || task.title}</p>
+                        <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
+                        <Badge variant="outline" className={isInProgress ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"}>
+                          {isInProgress ? "Active" : "Done"}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {emp?.name || "Unknown"} — {emp?.role}
+                        </span>
+                        <span>Project: {task.title}</span>
+                        <span>Due: {(() => {
+                          const d = new Date(task.deadline);
+                          const hasTime = task.deadline.includes("T") && !task.deadline.endsWith("T00:00:00.000Z");
+                          return hasTime ? `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : d.toLocaleDateString();
+                        })()}</span>
+                        {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+                        {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+          {tasks.length === 0 && (
+            <Card className="p-12">
+              <div className="text-center text-muted-foreground">
+                <ListTodo className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No tasks found</p>
+              </div>
+            </Card>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredStats.map(stat => (
           <Card key={stat.employee.id} className="hover:shadow-lg transition-all cursor-pointer group" onClick={() => { setSelectedEmployee(stat.employee); setAddTaskOpen(false); }}>
             <CardContent className="p-6">
@@ -896,6 +961,7 @@ export default function TaskManagement() {
             <p>No employees found</p>
           </div>
         </Card>
+      )}
       )}
 
       {/* Employee Profile Dialog */}
