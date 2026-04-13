@@ -392,7 +392,7 @@ export default function TaskManagement() {
                               {task.priority}
                             </Badge>
                             <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 animate-pulse">
-                              â± Active
+                              ÃƒÆ’Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒâ€šÃ‚Â± Active
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
@@ -460,12 +460,12 @@ export default function TaskManagement() {
                           </Button>
                           {task.rescheduleRequest?.status === "approved" ? (
                             <div className="text-center p-2 bg-success/10 border border-success/20 rounded text-xs text-success font-medium">
-                              ✓ Rescheduled for next day
+                              ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Rescheduled for next day
                               <p className="font-bold mt-0.5">{new Date(task.deadline).toLocaleDateString()}</p>
                             </div>
                           ) : task.rescheduleRequest?.status === "pending" ? (
                             <div className="text-center p-2 bg-primary/5 border border-primary/20 rounded text-xs text-primary">
-                              ⏳ Reschedule pending approval
+                              ÃƒÂ¢Ã‚ÂÃ‚Â³ Reschedule pending approval
                             </div>
                           ) : !task.extensionRequest && !task.cancellationRequest && (
                             <>
@@ -564,7 +564,7 @@ export default function TaskManagement() {
                             {task.priority}
                           </Badge>
                           <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-                            âœ“ Completed
+                            ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Completed
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
@@ -599,7 +599,7 @@ export default function TaskManagement() {
                           </span>
                           {task.efficiency! >= 100 ? (
                             <span className="text-xs text-success ml-auto">
-                              âœ“ Completed ahead of schedule
+                              ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Completed ahead of schedule
                             </span>
                           ) : (
                             <span className="text-xs text-warning ml-auto">
@@ -866,7 +866,7 @@ export default function TaskManagement() {
                       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <User className="h-3 w-3" />
-                          {emp?.name || "Unknown"} — {emp?.role}
+                          {emp?.name || "Unknown"} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {emp?.role}
                         </span>
                         <span>Project: {task.title}</span>
                         <span>Due: {(() => {
@@ -962,7 +962,7 @@ export default function TaskManagement() {
           </div>
         </Card>
       )}
-      )}
+      )
 
       {/* Employee Profile Dialog */}
       <EmployeeProfileDialog
@@ -982,7 +982,7 @@ export default function TaskManagement() {
             ? { ...task, deadline: tomorrowStr, rescheduleRequest: { ...task.rescheduleRequest, status: "approved" as const, adminResponse: "Rescheduled to next day" } }
             : { ...task, rescheduleRequest: { ...task.rescheduleRequest, status: "rejected" as const, adminResponse: "Reschedule rejected" } };
           await saveTasks([updatedTask]);
-          await addNotification({ message: `Your reschedule request for "${task.title}" has been ${approved ? "approved — rescheduled to tomorrow" : "rejected"}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
+          await addNotification({ message: `Your reschedule request for "${task.title}" has been ${approved ? "approved ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â rescheduled to tomorrow" : "rejected"}`, read: false, createdAt: new Date().toISOString(), forUser: task.assignedTo });
           await loadData();
         }}
       />
