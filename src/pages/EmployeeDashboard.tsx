@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from "react";
+﻿import { useMemo, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { getTasks, saveTasks, addNotification, getEmployees } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
@@ -34,6 +34,8 @@ export default function EmployeeDashboard() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [extensionForm, setExtensionForm] = useState({ reason: "", proposedDeadline: "", blockedByEmployee: "" });
   const [notCompletedReason, setNotCompletedReason] = useState("");
+  const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+  const [forwardForm, setForwardForm] = useState({ description: "", toEmployee: "" });
 
   useEffect(() => {
     loadTasks();
@@ -167,6 +169,45 @@ export default function EmployeeDashboard() {
     setSelectedTask(null);
   };
 
+  const openForwardDialog = (task: Task) => {
+    setSelectedTask(task);
+    setForwardForm({ description: "", toEmployee: "" });
+    setForwardDialogOpen(true);
+    setDialogOpen(false);
+  };
+
+  const submitForwardTask = async () => {
+    if (!selectedTask || !forwardForm.toEmployee || !forwardForm.description) return;
+
+    const allTasks = await getTasks();
+    const forwardedTask: Task = {
+      ...selectedTask,
+      id: crypto.randomUUID(),
+      assignedTo: forwardForm.toEmployee,
+      description: forwardForm.description,
+      status: "pending" as TaskStatus,
+      createdAt: new Date().toISOString(),
+      startedAt: undefined,
+      completedAt: undefined,
+      actualTime: undefined,
+      efficiency: undefined,
+      extensionRequest: undefined,
+      cancellationRequest: undefined,
+    };
+
+    await saveTasks([...allTasks, forwardedTask]);
+
+    await addNotification({
+      message: `Task "${selectedTask.title}" was forwarded to you by ${user?.name}`,
+      read: false,
+      createdAt: new Date().toISOString(),
+      forUser: forwardForm.toEmployee,
+    });
+
+    setForwardDialogOpen(false);
+    setSelectedTask(null);
+  };
+
   const pieData = [
     { name: "Completed", value: completed.length },
     { name: "In Progress", value: inProgress.length },
@@ -192,7 +233,7 @@ export default function EmployeeDashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="rounded-xl bg-primary p-6 text-primary-foreground">
-        <h1 className="text-2xl font-bold">Welcome back, {user?.name?.split(" ")[0]}! ðŸ‘‹</h1>
+        <h1 className="text-2xl font-bold">Welcome back, {user?.name?.split(" ")[0]}! 👋</h1>
         <p className="text-primary-foreground/80 mt-1">Here's your productivity overview</p>
       </div>
 
@@ -465,6 +506,10 @@ export default function EmployeeDashboard() {
                             <AlertCircle className="h-4 w-4" />
                             Not Completed
                           </Button>
+                          <Button onClick={() => openForwardDialog(task)} size="sm" variant="outline" className="gap-2">
+                            <TrendingUp className="h-4 w-4" />
+                            Forward Task
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -640,6 +685,57 @@ export default function EmployeeDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Forward Task Dialog */}
+      <Dialog open={forwardDialogOpen} onOpenChange={setForwardDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Forward Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <p className="text-sm font-medium">Task: {selectedTask?.title}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                placeholder="Describe what needs to be done..."
+                value={forwardForm.description}
+                onChange={e => setForwardForm(f => ({ ...f, description: e.target.value }))}
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Assign To</Label>
+              <Select
+                value={forwardForm.toEmployee}
+                onValueChange={v => setForwardForm(f => ({ ...f, toEmployee: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees
+                    .filter(e => e.id !== user?.id && e.status === "active")
+                    .map(e => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.name} — {e.role}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={submitForwardTask}
+              className="w-full"
+              disabled={!forwardForm.description || !forwardForm.toEmployee}
+            >
+              Forward Task
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

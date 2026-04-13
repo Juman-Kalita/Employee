@@ -36,6 +36,8 @@ export default function TaskManagement() {
   const [extensionForm, setExtensionForm] = useState({ reason: "", proposedDeadline: "", blockedByEmployee: "" });
   const [cancellationDialogOpen, setCancellationDialogOpen] = useState(false);
   const [cancellationForm, setCancellationForm] = useState({ reason: "" });
+  const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+  const [forwardForm, setForwardForm] = useState({ description: "", toEmployee: "" });
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [rescheduleForm, setRescheduleForm] = useState({ reason: "" });
   const [form, setForm] = useState({ title: "", description: "", assignedTo: "", expectedTime: "", deadline: "", priority: "medium" as Priority });
@@ -209,6 +211,41 @@ export default function TaskManagement() {
     await loadData();
     setCancellationDialogOpen(false);
     setSelectedTask(null);
+  };
+
+  const openForwardDialog = (task: Task) => {
+    setSelectedTask(task);
+    setForwardForm({ description: "", toEmployee: "" });
+    setForwardDialogOpen(true);
+  };
+
+  const submitForwardTask = async () => {
+    if (!selectedTask || !forwardForm.toEmployee || !forwardForm.description) return;
+    const allTasks = await getTasks();
+    const forwardedTask: Task = {
+      ...selectedTask,
+      id: crypto.randomUUID(),
+      assignedTo: forwardForm.toEmployee,
+      description: forwardForm.description,
+      status: "pending" as TaskStatus,
+      createdAt: new Date().toISOString(),
+      startedAt: undefined,
+      completedAt: undefined,
+      actualTime: undefined,
+      efficiency: undefined,
+      extensionRequest: undefined,
+      cancellationRequest: undefined,
+    };
+    await saveTasks([...allTasks, forwardedTask]);
+    await addNotification({
+      message: `Task "${selectedTask.title}" was forwarded to you by ${user?.name}`,
+      read: false,
+      createdAt: new Date().toISOString(),
+      forUser: forwardForm.toEmployee,
+    });
+    setForwardDialogOpen(false);
+    setSelectedTask(null);
+    await loadData();
   };
 
   const openRescheduleDialog = (task: Task) => {
@@ -480,6 +517,10 @@ export default function TaskManagement() {
                               <Button onClick={() => openRescheduleDialog(task)} size="sm" variant="outline" className="gap-2 text-primary border-primary/30 hover:bg-primary/5">
                                 <AlertCircle className="h-4 w-4" />
                                 Reason
+                              </Button>
+                              <Button onClick={() => openForwardDialog(task)} size="sm" variant="outline" className="gap-2 text-blue-500 border-blue-400/30 hover:bg-blue-500/5">
+                                <ChevronRight className="h-4 w-4" />
+                                Forward Task
                               </Button>
                             </>
                           )}
@@ -808,6 +849,56 @@ export default function TaskManagement() {
                 disabled={!cancellationForm.reason}
               >
                 Submit
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Forward Task Dialog */}
+        <Dialog open={forwardDialogOpen} onOpenChange={setForwardDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Forward Task</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <p className="text-sm font-medium">Task: {selectedTask?.title}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  placeholder="Describe what needs to be done..."
+                  value={forwardForm.description}
+                  onChange={e => setForwardForm(f => ({ ...f, description: e.target.value }))}
+                  rows={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Assign To</Label>
+                <Select
+                  value={forwardForm.toEmployee}
+                  onValueChange={v => setForwardForm(f => ({ ...f, toEmployee: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees
+                      .filter(e => e.id !== user?.id && e.status === "active")
+                      .map(e => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.name} — {e.role}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={submitForwardTask}
+                className="w-full"
+                disabled={!forwardForm.description || !forwardForm.toEmployee}
+              >
+                Forward Task
               </Button>
             </div>
           </DialogContent>
