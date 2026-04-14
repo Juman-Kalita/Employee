@@ -41,6 +41,7 @@ export interface Task {
   title: string;
   description: string;
   assignedTo: string; // employee id
+  assignedBy?: string; // employee id who assigned this task
   projectId?: string; // optional project id
   expectedTime: number; // minutes
   deadline: string; // ISO date

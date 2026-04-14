@@ -45,6 +45,8 @@ export default function TaskManagement() {
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [otherTaskOpen, setOtherTaskOpen] = useState(false);
   const [otherTaskForm, setOtherTaskForm] = useState({ title: "", description: "", actualTime: "", date: new Date().toISOString().split("T")[0] });
+  const [assignTaskOpen, setAssignTaskOpen] = useState(false);
+  const [assignTaskForm, setAssignTaskForm] = useState({ title: "", description: "", toEmployee: "", deadline: "", priority: "medium" as Priority });
   const [adminView, setAdminView] = useState<"employees" | "tasks">("employees");
 
   useEffect(() => {
@@ -362,6 +364,41 @@ export default function TaskManagement() {
 
   // If employee, show simple task list view
   if (!isAdmin) {
+    const submitAssignTask = async () => {
+      if (!assignTaskForm.title || !assignTaskForm.toEmployee || !assignTaskForm.deadline) return;
+      const newTask = await storeAddTask({
+        title: assignTaskForm.title,
+        description: assignTaskForm.description,
+        assignedTo: assignTaskForm.toEmployee,
+        assignedBy: user?.id,
+        expectedTime: 0,
+        deadline: assignTaskForm.deadline,
+        priority: assignTaskForm.priority,
+        status: "pending" as TaskStatus,
+        createdAt: new Date().toISOString(),
+      });
+      if (newTask) {
+        const targetEmp = employees.find(e => e.id === assignTaskForm.toEmployee);
+        // Notify the assigned employee
+        await addNotification({
+          message: `${user?.name} assigned you a new task: "${assignTaskForm.title}"`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          forUser: assignTaskForm.toEmployee,
+        });
+        // Notify admin
+        await addNotification({
+          message: `${user?.name} assigned task "${assignTaskForm.title}" to ${targetEmp?.name || "an employee"}`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          forUser: "00000000-0000-0000-0000-000000000001",
+        });
+        setAssignTaskForm({ title: "", description: "", toEmployee: "", deadline: "", priority: "medium" });
+        setAssignTaskOpen(false);
+        await loadData();
+      }
+    };
+
     const inProgressTasks = userTasks.filter(t => t.status === "in-progress");
     const completedTasks = userTasks.filter(t => t.status === "completed");
     const notCompletedTasks = inProgressTasks.filter(t => t.cancellationRequest?.status === 'pending');
@@ -373,10 +410,16 @@ export default function TaskManagement() {
             <h1 className="text-2xl font-bold">My Tasks</h1>
             <p className="text-muted-foreground">View your assigned tasks and progress</p>
           </div>
-          <Button onClick={() => setOtherTaskOpen(true)} className="gap-2">
-            <PlusCircle className="h-4 w-4" />
-            Other Tasks
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setAssignTaskOpen(true)} variant="outline" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Assign Task
+            </Button>
+            <Button onClick={() => setOtherTaskOpen(true)} className="gap-2">
+              <PlusCircle className="h-4 w-4" />
+              Other Tasks
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -667,6 +710,50 @@ export default function TaskManagement() {
           </Card>
         )}
 
+        {/* Tasks I Assigned to Others */}
+        {(() => {
+          const myAssignedTasks = tasks.filter(t => t.assignedBy === user?.id);
+          if (myAssignedTasks.length === 0) return null;
+          return (
+            <div>
+              <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Tasks I Assigned ({myAssignedTasks.length})
+              </h2>
+              <div className="space-y-3">
+                {myAssignedTasks.map(task => {
+                  const assignedTo = employees.find(e => e.id === task.assignedTo);
+                  return (
+                    <Card key={task.id} className="border-l-4 border-l-primary">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h3 className="font-semibold">{task.title}</h3>
+                              <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
+                              <Badge variant="outline" className={
+                                task.status === "completed" ? "bg-success/10 text-success border-success/20" :
+                                task.status === "in-progress" ? "bg-warning/10 text-warning border-warning/20" :
+                                "bg-muted text-muted-foreground"
+                              }>{task.status}</Badge>
+                            </div>
+                            {task.description && <p className="text-sm text-muted-foreground mb-2">{task.description}</p>}
+                            <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1"><User className="h-3 w-3" />Assigned to: <span className="font-medium text-foreground">{assignedTo?.name || "Unknown"}</span></span>
+                              <span>Deadline: {new Date(task.deadline).toLocaleDateString()}</span>
+                              <span>Assigned on: {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Other Tasks (self-reported) */}
         {(() => {
           const otherTasks = userTasks.filter(t => t.status === "completed" && t.expectedTime === 0 && t.startedAt === t.completedAt);
@@ -849,6 +936,72 @@ export default function TaskManagement() {
                 disabled={!cancellationForm.reason}
               >
                 Submit
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Task Dialog */}
+        <Dialog open={assignTaskOpen} onOpenChange={setAssignTaskOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Assign Task to Employee</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>Task Title</Label>
+                <Input
+                  placeholder="Enter task title..."
+                  value={assignTaskForm.title}
+                  onChange={e => setAssignTaskForm(f => ({ ...f, title: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  placeholder="Describe the task..."
+                  value={assignTaskForm.description}
+                  onChange={e => setAssignTaskForm(f => ({ ...f, description: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Assign To</Label>
+                <Select value={assignTaskForm.toEmployee} onValueChange={v => setAssignTaskForm(f => ({ ...f, toEmployee: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                  <SelectContent>
+                    {employees.filter(e => e.id !== user?.id && e.status === "active").map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.name} — {e.role}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Select value={assignTaskForm.priority} onValueChange={v => setAssignTaskForm(f => ({ ...f, priority: v as Priority }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Deadline</Label>
+                <Input
+                  type="date"
+                  value={assignTaskForm.deadline}
+                  onChange={e => setAssignTaskForm(f => ({ ...f, deadline: e.target.value }))}
+                  min={new Date().toISOString().split("T")[0]}
+                />
+              </div>
+              <Button
+                onClick={submitAssignTask}
+                className="w-full"
+                disabled={!assignTaskForm.title || !assignTaskForm.toEmployee || !assignTaskForm.deadline}
+              >
+                Assign Task
               </Button>
             </div>
           </DialogContent>

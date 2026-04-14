@@ -16,6 +16,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // Admin account check
 const ADMIN_EMAIL = "admin@worktrack.com";
 const ADMIN_ID = "00000000-0000-0000-0000-000000000001";
+const ADMIN2_ID = "4d4e4559-d037-4480-ab9f-62e8a65b0cf2";
+const ADMIN2_NAME = "Admin2";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
@@ -53,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Determine role based on email or specific admin ID
-      const role: UserRole = (data.email === ADMIN_EMAIL || data.id === ADMIN_ID) ? "admin" : "employee";
+      const role: UserRole = (data.email === ADMIN_EMAIL || data.id === ADMIN_ID || data.id === ADMIN2_ID || data.name === ADMIN2_NAME) ? "admin" : "employee";
 
       const authenticatedUser: User = {
         id: data.id,
@@ -82,13 +84,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkCanLogout = useCallback(async (): Promise<{ allowed: boolean; blockedTasks: string[] }> => {
     if (!user || user.role !== "employee") return { allowed: true, blockedTasks: [] };
     const tasks = await getTasks();
-    const blocked = tasks.filter(t =>
-      t.assignedTo === user.id &&
-      t.status === "in-progress" &&
-      !t.cancellationRequest &&
-      t.rescheduleRequest?.status !== "approved" &&
-      t.rescheduleRequest?.status !== "pending"
-    );
+    const today = new Date().toISOString().split("T")[0];
+    const blocked = tasks.filter(t => {
+      if (t.assignedTo !== user.id || t.status !== "in-progress") return false;
+      if (t.cancellationRequest || t.rescheduleRequest?.status === "approved" || t.rescheduleRequest?.status === "pending") return false;
+      // Only block logout if the task deadline is today
+      const deadlineDate = t.deadline?.split("T")[0];
+      return deadlineDate === today;
+    });
     return { allowed: blocked.length === 0, blockedTasks: blocked.map(t => t.title) };
   }, [user]);
 
