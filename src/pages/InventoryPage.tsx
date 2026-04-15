@@ -17,7 +17,7 @@ export default function InventoryPage({ isAdmin: isAdminProp }: { isAdmin?: bool
   const [projects, setProjects] = useState<SalesProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ description: "", machineSource: "", customMachine: "", arrivedAt: "" });
+  const [form, setForm] = useState({ description: "", machineSource: "", customMachine: "", arrivedAt: "", quantity: "" });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => { loadData(); }, []);
@@ -40,9 +40,10 @@ export default function InventoryPage({ isAdmin: isAdminProp }: { isAdmin?: bool
     await addInventoryItem({
       description: form.description.trim(),
       machineName,
+      quantity: form.quantity.trim() || undefined,
       arrivedAt: new Date(form.arrivedAt).toISOString(),
     });
-    setForm({ description: "", machineSource: "", customMachine: "", arrivedAt: "" });
+    setForm({ description: "", machineSource: "", customMachine: "", arrivedAt: "", quantity: "" });
     setAddOpen(false);
     setSubmitting(false);
     await loadData();
@@ -92,6 +93,12 @@ export default function InventoryPage({ isAdmin: isAdminProp }: { isAdmin?: bool
                         <span>Machine: </span>
                         <Badge variant="outline" className="text-xs ml-1">{item.machineName}</Badge>
                       </span>
+                      {item.quantity && (
+                        <span className="flex items-center gap-1">
+                          <Package className="h-3.5 w-3.5" />
+                          Quantity: <span className="font-medium text-foreground ml-1">{item.quantity}</span>
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5" />
                         Arrived: {new Date(item.arrivedAt).toLocaleDateString()} at {new Date(item.arrivedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -152,6 +159,14 @@ export default function InventoryPage({ isAdmin: isAdminProp }: { isAdmin?: bool
                   type="datetime-local"
                   value={form.arrivedAt}
                   onChange={e => setForm(f => ({ ...f, arrivedAt: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input
+                  value={form.quantity}
+                  onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
+                  placeholder="e.g. 10, 5 boxes, 2 sets..."
                 />
               </div>
               <Button

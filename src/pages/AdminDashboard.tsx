@@ -43,6 +43,7 @@ export default function AdminDashboard() {
 
   const tasksByEmployee = useMemo(() => employees
     .map(e => ({
+      id: e.id,
       name: e.name.split(" ")[0],
       completed: tasks.filter(t => t.assignedTo === e.id && t.status === "completed").length,
       inProgress: tasks.filter(t => t.assignedTo === e.id && t.status === "in-progress").length,
@@ -228,7 +229,12 @@ export default function AdminDashboard() {
           <CardHeader><CardTitle className="text-base">Tasks by Employee</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={tasksByEmployee}>
+              <BarChart data={tasksByEmployee} onClick={(data) => {
+                if (data?.activePayload?.[0]?.payload?.id) {
+                  const emp = employees.find(e => e.id === data.activePayload[0].payload.id);
+                  if (emp) { setDialogOpen(false); setProfileEmployee(emp); }
+                }
+              }} style={{ cursor: "pointer" }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="name" fontSize={12} />
                 <YAxis fontSize={12} />

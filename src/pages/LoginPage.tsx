@@ -70,13 +70,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 rounded-lg bg-muted p-4 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Demo Credentials</p>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <p><span className="font-medium text-foreground">Admin:</span> Admin User / admin123</p>
-                <p className="text-[10px] mt-1 italic">Employees can login with their name and password</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

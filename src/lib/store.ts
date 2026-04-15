@@ -481,6 +481,7 @@ export async function getInventory(): Promise<InventoryItem[]> {
     id: i.id,
     description: i.description,
     machineName: i.machine_name,
+    quantity: i.quantity || undefined,
     arrivedAt: i.arrived_at,
     createdAt: i.created_at,
   }));
@@ -489,11 +490,11 @@ export async function getInventory(): Promise<InventoryItem[]> {
 export async function addInventoryItem(item: Omit<InventoryItem, 'id' | 'createdAt'>): Promise<InventoryItem | null> {
   const { data, error } = await supabase
     .from('inventory')
-    .insert({ description: item.description, machine_name: item.machineName, arrived_at: item.arrivedAt })
+    .insert({ description: item.description, machine_name: item.machineName, arrived_at: item.arrivedAt, quantity: item.quantity || null })
     .select()
     .single();
   if (error) { console.error('Error adding inventory item:', error); return null; }
-  return { id: data.id, description: data.description, machineName: data.machine_name, arrivedAt: data.arrived_at, createdAt: data.created_at };
+  return { id: data.id, description: data.description, machineName: data.machine_name, quantity: data.quantity || undefined, arrivedAt: data.arrived_at, createdAt: data.created_at };
 }
 
 export async function deleteInventoryItem(id: string): Promise<boolean> {

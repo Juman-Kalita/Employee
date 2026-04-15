@@ -21,6 +21,7 @@ export interface InventoryItem {
   id: string;
   description: string;
   machineName: string;
+  quantity?: string;
   arrivedAt: string;
   createdAt: string;
 }
