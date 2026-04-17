@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getSalesProjects, addSalesProject, deleteSalesProject, completeSalesProject, getEmployees, getTasks, getProjects, saveTasks, addNotification, addTask as storeAddTask } from "@/lib/store";
+import { getSalesProjects, addSalesProject, deleteSalesProject, completeSalesProject, getEmployees, getTasks, addNotification, addTask as storeAddTask, updateSalesProjectTemplates } from "@/lib/store";
 import { SalesProject, Employee, Task, Priority } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, Trash2, Briefcase, Calendar, Hash, ChevronDown, ChevronRight, Users, CheckCircle, Clock } from "lucide-react";
+import { Plus, Trash2, Briefcase, Calendar, Hash, ChevronDown, ChevronRight, CheckCircle, Clock, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const priorityColors: Record<Priority, string> = {
   high: "bg-destructive/10 text-destructive border-destructive/20",
@@ -24,12 +25,15 @@ export default function SalesPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "" });
+  const [form, setForm] = useState({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "", leaderId: "" });
+  const [templateInput, setTemplateInput] = useState("");
+  const [templates, setTemplates] = useState<string[]>([]);
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<SalesProject | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority });
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
 
   useEffect(() => { loadData(); }, []);
 
@@ -45,8 +49,10 @@ export default function SalesPage() {
   const handleAdd = async () => {
     if (!form.name.trim() || !form.projectNumber.trim() || !form.startDate || !form.endDate) return;
     const createdAt = form.createdAt ? new Date(form.createdAt).toISOString() : new Date().toISOString();
-    await addSalesProject({ name: form.name.trim(), projectNumber: form.projectNumber.trim(), startDate: form.startDate, endDate: form.endDate, createdAt });
-    setForm({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "" });
+    await addSalesProject({ name: form.name.trim(), projectNumber: form.projectNumber.trim(), startDate: form.startDate, endDate: form.endDate, createdAt, status: "active", taskTemplates: templates, leaderId: form.leaderId || undefined });
+    setForm({ name: "", projectNumber: "", startDate: "", endDate: "", createdAt: "", leaderId: "" });
+    setTemplates([]);
+    setTemplateInput("");
     setAddOpen(false);
     await loadData();
   };
@@ -65,18 +71,22 @@ export default function SalesPage() {
     setSelectedProject(project);
     setSelectedEmployee("");
     setTaskForm({ description: "", deadline: "", priority: "medium" });
+    setSelectedTemplates([]);
     setAddTaskOpen(true);
   };
 
   const handleAddTask = async () => {
-    if (!selectedProject || !selectedEmployee || !taskForm.description.trim()) return;
+    const description = selectedTemplates.length > 0
+      ? selectedTemplates.join(", ")
+      : taskForm.description.trim();
+    if (!selectedProject || !selectedEmployee || !description) return;
     const now = new Date().toISOString();
     const deadline = taskForm.deadline
       ? new Date(taskForm.deadline).toISOString()
       : selectedProject.endDate;
     await storeAddTask({
       title: selectedProject.name,
-      description: taskForm.description.trim(),
+      description,
       assignedTo: selectedEmployee,
       projectId: undefined,
       expectedTime: 0,
@@ -238,9 +248,9 @@ export default function SalesPage() {
 
       {/* Add Project Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] flex flex-col">
           <DialogHeader><DialogTitle>Add Sales Project</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-2 overflow-y-auto flex-1 pr-1">
             <div className="space-y-2">
               <Label>Project Name</Label>
               <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Website Redesign" />
@@ -260,6 +270,51 @@ export default function SalesPage() {
             <div className="space-y-2">
               <Label>Created At (optional — defaults to now)</Label>
               <Input type="datetime-local" value={form.createdAt} onChange={e => setForm(f => ({ ...f, createdAt: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Team Leader (optional)</Label>
+              <Select value={form.leaderId} onValueChange={v => setForm(f => ({ ...f, leaderId: v === "none" ? "" : v }))}>
+                <SelectTrigger><SelectValue placeholder="Select team leader" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {employees.filter(e => e.type === "team_leader" && e.status === "active").map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.name} — {e.role}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Task Checkboxes (optional)</Label>
+              <p className="text-xs text-muted-foreground">Add predefined tasks for this project. When assigning tasks you can tick these instead of typing.</p>
+              <div className="flex gap-2">
+                <Input
+                  value={templateInput}
+                  onChange={e => setTemplateInput(e.target.value)}
+                  placeholder="e.g. Calibration check"
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && templateInput.trim()) {
+                      e.preventDefault();
+                      setTemplates(t => [...t, templateInput.trim()]);
+                      setTemplateInput("");
+                    }
+                  }}
+                />
+                <Button type="button" variant="outline" size="sm" onClick={() => { if (templateInput.trim()) { setTemplates(t => [...t, templateInput.trim()]); setTemplateInput(""); } }}>
+                  Add
+                </Button>
+              </div>
+              {templates.length > 0 && (
+                <div className="space-y-1 mt-2">
+                  {templates.map((t, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-1.5">
+                      <span>{t}</span>
+                      <button onClick={() => setTemplates(prev => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <Button onClick={handleAdd} className="w-full" disabled={!form.name.trim() || !form.projectNumber.trim() || !form.startDate || !form.endDate}>
               Create Project
@@ -282,10 +337,34 @@ export default function SalesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="What needs to be done?" rows={3} />
-            </div>
+            {selectedProject?.taskTemplates && selectedProject.taskTemplates.length > 0 ? (
+              <div className="space-y-2">
+                <Label>Select Tasks</Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                  {selectedProject.taskTemplates.map((tmpl, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`tmpl-${i}`}
+                        checked={selectedTemplates.includes(tmpl)}
+                        onCheckedChange={checked => {
+                          setSelectedTemplates(prev =>
+                            checked ? [...prev, tmpl] : prev.filter(t => t !== tmpl)
+                          );
+                        }}
+                      />
+                      <label htmlFor={`tmpl-${i}`} className="text-sm cursor-pointer">{tmpl}</label>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">Or type a custom description below</p>
+                <Textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="Custom description (optional if checkboxes selected)" rows={2} />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="What needs to be done?" rows={3} />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Deadline</Label>
               <Input type="datetime-local" value={taskForm.deadline} onChange={e => setTaskForm(f => ({ ...f, deadline: e.target.value }))} min={new Date().toISOString().slice(0, 16)} />
@@ -301,7 +380,13 @@ export default function SalesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleAddTask} className="w-full" disabled={!selectedEmployee || !taskForm.description.trim()}>Assign Task</Button>
+            <Button
+              onClick={handleAddTask}
+              className="w-full"
+              disabled={!selectedEmployee || (selectedTemplates.length === 0 && !taskForm.description.trim())}
+            >
+              Assign Task
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

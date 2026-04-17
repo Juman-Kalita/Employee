@@ -18,6 +18,7 @@ export async function getEmployees(): Promise<Employee[]> {
     name: e.name,
     email: e.email,
     role: e.role,
+    type: (e.type || "employee") as "employee" | "team_leader",
     status: e.status as 'active' | 'inactive',
     password: e.password
   }));
@@ -31,6 +32,7 @@ export async function addEmployee(employee: Omit<Employee, 'id'>): Promise<Emplo
       email: employee.email,
       password: employee.password || '',
       role: employee.role,
+      type: employee.type || 'employee',
       status: employee.status
     })
     .select()
@@ -46,6 +48,7 @@ export async function addEmployee(employee: Omit<Employee, 'id'>): Promise<Emplo
     name: data.name,
     email: data.email,
     role: data.role,
+    type: (data.type || 'employee') as "employee" | "team_leader",
     status: data.status,
     password: data.password
   };
@@ -59,6 +62,7 @@ export async function updateEmployee(employee: Employee): Promise<boolean> {
       email: employee.email,
       password: employee.password,
       role: employee.role,
+      type: employee.type || 'employee',
       status: employee.status
     })
     .eq('id', employee.id);
@@ -442,17 +446,28 @@ export async function getSalesProjects(): Promise<SalesProject[]> {
     createdAt: p.created_at,
     status: (p.status || 'active') as 'active' | 'completed',
     completedAt: p.completed_at || undefined,
+    taskTemplates: p.task_templates ? JSON.parse(p.task_templates) : [],
+    leaderId: p.leader_id || undefined,
   }));
 }
 
 export async function addSalesProject(project: Omit<SalesProject, 'id' | 'createdAt'> & { createdAt?: string }): Promise<SalesProject | null> {
   const { data, error } = await supabase
     .from('sales_projects')
-    .insert({ name: project.name, project_number: project.projectNumber, start_date: project.startDate, end_date: project.endDate, ...(project.createdAt ? { created_at: project.createdAt } : {}) })
+    .insert({ name: project.name, project_number: project.projectNumber, start_date: project.startDate, end_date: project.endDate, task_templates: project.taskTemplates ? JSON.stringify(project.taskTemplates) : null, leader_id: project.leaderId || null, ...(project.createdAt ? { created_at: project.createdAt } : {}) })
     .select()
     .single();
   if (error) { console.error('Error adding sales project:', error); return null; }
-  return { id: data.id, name: data.name, projectNumber: data.project_number, startDate: data.start_date, endDate: data.end_date, createdAt: data.created_at };
+  return { id: data.id, name: data.name, projectNumber: data.project_number, startDate: data.start_date, endDate: data.end_date, createdAt: data.created_at, status: 'active', taskTemplates: data.task_templates ? JSON.parse(data.task_templates) : [], leaderId: data.leader_id || undefined };
+}
+
+export async function updateSalesProjectTemplates(id: string, taskTemplates: string[]): Promise<boolean> {
+  const { error } = await supabase
+    .from('sales_projects')
+    .update({ task_templates: JSON.stringify(taskTemplates) })
+    .eq('id', id);
+  if (error) { console.error('Error updating task templates:', error); return false; }
+  return true;
 }
 
 export async function deleteSalesProject(id: string): Promise<boolean> {

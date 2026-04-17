@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "employee";
+﻿export type UserRole = "admin" | "employee" | "team_leader";
 
 export interface User {
   id: string;
@@ -8,7 +8,7 @@ export interface User {
 }
 
 export type Priority = "low" | "medium" | "high";
-export type TaskStatus = "pending" | "in-progress" | "completed";
+export type TaskStatus = "pending" | "in-progress" | "completed" | "pending-approval";
 
 export interface Project {
   id: string;
@@ -35,6 +35,8 @@ export interface SalesProject {
   createdAt: string;
   status: "active" | "completed";
   completedAt?: string;
+  taskTemplates?: string[];
+  leaderId?: string;
 }
 
 export interface Task {
@@ -80,8 +82,9 @@ export interface Employee {
   name: string;
   email: string;
   role: string;
+  type?: "employee" | "team_leader";
   status: "active" | "inactive";
-  password?: string; // Optional for backward compatibility
+  password?: string;
 }
 
 export interface Notification {
@@ -91,3 +94,5 @@ export interface Notification {
   createdAt: string;
   forUser: string; // user id
 }
+
+

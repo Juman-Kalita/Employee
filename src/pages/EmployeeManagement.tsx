@@ -20,7 +20,7 @@ export default function EmployeeManagement() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", role: "", status: "active" as "active" | "inactive", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", role: "", status: "active" as "active" | "inactive", password: "", type: "employee" as "employee" | "team_leader" });
   const [profileEmployee, setProfileEmployee] = useState<Employee | null>(null);
 
   useEffect(() => { loadData(); }, []);
@@ -40,8 +40,8 @@ export default function EmployeeManagement() {
       e.email.toLowerCase().includes(search.toLowerCase())
     ), [employees, search]);
 
-  const openNew = () => { setEditing(null); setForm({ name: "", email: "", role: "", status: "active", password: "" }); setDialogOpen(true); };
-  const openEdit = (e: Employee) => { setEditing(e); setForm({ name: e.name, email: e.email, role: e.role, status: e.status, password: e.password || "" }); setDialogOpen(true); };
+  const openNew = () => { setEditing(null); setForm({ name: "", email: "", role: "", status: "active", password: "", type: "employee" }); setDialogOpen(true); };
+  const openEdit = (e: Employee) => { setEditing(e); setForm({ name: e.name, email: e.email, role: e.role, status: e.status, password: e.password || "", type: e.type || "employee" }); setDialogOpen(true); };
 
   const handleSave = async () => {
     if (!form.name || !form.password) return;
@@ -144,6 +144,16 @@ export default function EmployeeManagement() {
             <div className="space-y-2"><Label>Email (optional)</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
             <div className="space-y-2"><Label>Password</Label><Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Enter password" /></div>
             <div className="space-y-2"><Label>Role</Label><Input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="e.g. Developer" /></div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select value={form.type} onValueChange={(v: "employee" | "team_leader") => setForm(f => ({ ...f, type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employee">Employee</SelectItem>
+                  <SelectItem value="team_leader">Team Leader</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v: "active" | "inactive") => setForm(f => ({ ...f, status: v }))}>

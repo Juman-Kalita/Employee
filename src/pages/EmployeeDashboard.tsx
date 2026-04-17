@@ -60,18 +60,38 @@ export default function EmployeeDashboard() {
 
   const completeTask = async (id: string) => {
     const now = new Date();
-    const updated = tasks.map(t => {
-      if (t.id !== id) return t;
-      const start = new Date(t.startedAt!);
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    // Check if this task belongs to a project with a team leader
+    const allProjects = await import("@/lib/store").then(m => m.getSalesProjects());
+    const project = allProjects.find((p: import("@/lib/types").SalesProject) => p.name === task.title);
+    if (project?.leaderId && project.leaderId !== user?.id) {
+      const start = new Date(task.startedAt!);
       const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
       const actual = Math.max(actualMinutes, 1);
-      // Only cap efficiency at 100% if it exceeds 100 (completed faster than expected)
-      // If slower than expected, show the actual low efficiency
-      const rawEfficiency = Math.round((t.expectedTime / actual) * 100);
+      const rawEfficiency = Math.round((task.expectedTime / actual) * 100);
       const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
-      return { ...t, status: "completed" as TaskStatus, completedAt: now.toISOString(), actualTime: actual, efficiency };
-    });
-    await saveTasks(updated);
+      const updated = tasks.map(t => t.id !== id ? t : { ...t, status: "pending-approval" as TaskStatus, actualTime: actual, efficiency });
+      await saveTasks(updated);
+      await addNotification({
+        message: `Task "${task.description || task.title}" by ${user?.name} is pending your approval`,
+        read: false,
+        createdAt: now.toISOString(),
+        forUser: project.leaderId,
+      });
+    } else {
+      const updated = tasks.map(t => {
+        if (t.id !== id) return t;
+        const start = new Date(t.startedAt!);
+        const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
+        const actual = Math.max(actualMinutes, 1);
+        const rawEfficiency = Math.round((t.expectedTime / actual) * 100);
+        const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
+        return { ...t, status: "completed" as TaskStatus, completedAt: now.toISOString(), actualTime: actual, efficiency };
+      });
+      await saveTasks(updated);
+    }
     await loadTasks();
   };
 

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getSalesProjects, addNotification, deleteTask } from "@/lib/store";
 import { Task, Priority, TaskStatus, Employee, SalesProject } from "@/lib/types";
@@ -49,9 +50,24 @@ export default function TaskManagement() {
   const [assignTaskForm, setAssignTaskForm] = useState({ title: "", description: "", toEmployee: "", deadline: "", priority: "medium" as Priority });
   const [adminView, setAdminView] = useState<"employees" | "tasks">("employees");
 
+  const location = useLocation();
+
   useEffect(() => {
     loadData();
   }, []);
+
+  // Auto-open employee profile if navigated from a notification
+  useEffect(() => {
+    const state = location.state as { openEmployeeId?: string } | null;
+    if (state?.openEmployeeId && employees.length > 0) {
+      const emp = employees.find(e => e.id === state.openEmployeeId);
+      if (emp) {
+        setSelectedEmployee(emp);
+        // Clear the state so it doesn't re-trigger
+        window.history.replaceState({}, "");
+      }
+    }
+  }, [location.state, employees]);
 
   const loadData = async () => {
     setLoading(true);
@@ -125,18 +141,42 @@ export default function TaskManagement() {
 
   const completeTask = async (id: string) => {
     const now = new Date();
-    const updated = tasks.map(t => {
-      if (t.id !== id) return t;
-      const start = new Date(t.startedAt!);
-      const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
-      const actual = Math.max(actualMinutes, 1);
-      // Only cap efficiency at 100% if it exceeds 100 (completed faster than expected)
-      // If slower than expected, show the actual low efficiency
-      const rawEfficiency = Math.round((t.expectedTime / actual) * 100);
-      const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
-      return { ...t, status: "completed" as TaskStatus, completedAt: now.toISOString(), actualTime: actual, efficiency };
-    });
-    await saveTasks(updated);
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+
+    // Check if this task belongs to a project with a team leader
+    const project = projects.find(p => p.name === task.title);
+    if (project?.leaderId && project.leaderId !== user?.id) {
+      // Route to team leader for approval
+      const updated = tasks.map(t => {
+        if (t.id !== id) return t;
+        const start = new Date(t.startedAt!);
+        const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
+        const actual = Math.max(actualMinutes, 1);
+        const rawEfficiency = Math.round((t.expectedTime / actual) * 100);
+        const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
+        return { ...t, status: "pending-approval" as TaskStatus, actualTime: actual, efficiency };
+      });
+      await saveTasks(updated);
+      await addNotification({
+        message: `Task "${task.description || task.title}" by ${user?.name} is pending your approval`,
+        read: false,
+        createdAt: now.toISOString(),
+        forUser: project.leaderId,
+      });
+    } else {
+      // No team leader — mark directly as completed
+      const updated = tasks.map(t => {
+        if (t.id !== id) return t;
+        const start = new Date(t.startedAt!);
+        const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
+        const actual = Math.max(actualMinutes, 1);
+        const rawEfficiency = Math.round((t.expectedTime / actual) * 100);
+        const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
+        return { ...t, status: "completed" as TaskStatus, completedAt: now.toISOString(), actualTime: actual, efficiency };
+      });
+      await saveTasks(updated);
+    }
     await loadData();
   };
 
@@ -403,6 +443,26 @@ export default function TaskManagement() {
     const completedTasks = userTasks.filter(t => t.status === "completed");
     const notCompletedTasks = inProgressTasks.filter(t => t.cancellationRequest?.status === 'pending');
 
+    // Team leader: tasks in their projects pending approval
+    const myLeaderProjects = projects.filter(p => p.leaderId === user?.id);
+    const pendingApprovalTasks = myLeaderProjects.length > 0
+      ? tasks.filter(t => t.status === "pending-approval" && myLeaderProjects.some(p => p.name === t.title))
+      : [];
+
+    const approveTask = async (taskId: string, approved: boolean) => {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const now = new Date().toISOString();
+      if (approved) {
+        await saveTasks([{ ...task, status: "completed" as TaskStatus, completedAt: now }]);
+        await addNotification({ message: `Your task "${task.description || task.title}" was approved by ${user?.name}`, read: false, createdAt: now, forUser: task.assignedTo });
+      } else {
+        await saveTasks([{ ...task, status: "in-progress" as TaskStatus }]);
+        await addNotification({ message: `Your task "${task.description || task.title}" was sent back for revision by ${user?.name}`, read: false, createdAt: now, forUser: task.assignedTo });
+      }
+      await loadData();
+    };
+
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
@@ -534,10 +594,16 @@ export default function TaskManagement() {
                           )}
                         </div>
                         <div className="flex flex-col gap-2 shrink-0">
-                          <Button onClick={() => completeTask(task.id)} size="sm" className="gap-2">
-                            <CheckCircle className="h-4 w-4" />
-                            Complete
-                          </Button>
+                          {(() => {
+                            const proj = projects.find(p => p.name === task.title);
+                            const hasLeader = proj?.leaderId && proj.leaderId !== user?.id;
+                            return (
+                              <Button onClick={() => completeTask(task.id)} size="sm" className="gap-2">
+                                <CheckCircle className="h-4 w-4" />
+                                {hasLeader ? "Submit for Approval" : "Complete"}
+                              </Button>
+                            );
+                          })()}
                           {task.rescheduleRequest?.status === "approved" ? (
                             <div className="text-center p-2 bg-success/10 border border-success/20 rounded text-xs text-success font-medium">
                               ✓ Rescheduled for next day
@@ -708,6 +774,48 @@ export default function TaskManagement() {
               <p>No tasks assigned yet</p>
             </div>
           </Card>
+        )}
+
+        {/* Pending Approval (Team Leader) */}
+        {pendingApprovalTasks.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-warning" />
+              Pending Your Approval ({pendingApprovalTasks.length})
+            </h2>
+            <div className="space-y-3">
+              {pendingApprovalTasks.map(task => {
+                const assignedEmp = employees.find(e => e.id === task.assignedTo);
+                return (
+                  <Card key={task.id} className="border-l-4 border-l-warning">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="font-semibold">{task.description || task.title}</h3>
+                            <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
+                          </div>
+                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                            <span>By: <span className="font-medium text-foreground">{assignedEmp?.name || "Unknown"}</span></span>
+                            <span>Project: {task.title}</span>
+                            <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button size="sm" className="gap-1 bg-success hover:bg-success/90" onClick={() => approveTask(task.id, true)}>
+                            <CheckCircle className="h-3.5 w-3.5" /> Approve
+                          </Button>
+                          <Button size="sm" variant="outline" className="gap-1 text-destructive border-destructive/30" onClick={() => approveTask(task.id, false)}>
+                            <AlertCircle className="h-3.5 w-3.5" /> Send Back
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Tasks I Assigned to Others */}
@@ -1119,65 +1227,43 @@ export default function TaskManagement() {
 
       {adminView === "employees" && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredStats.map(stat => (
-          <Card key={stat.employee.id} className="hover:shadow-lg transition-all cursor-pointer group" onClick={() => { setSelectedEmployee(stat.employee); setAddTaskOpen(false); }}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 bg-primary/10">
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                      {stat.employee.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-semibold">{stat.employee.name}</h3>
-                    <p className="text-sm text-muted-foreground">{stat.employee.role}</p>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {filteredStats.map(stat => {
+              const empTasks = tasks.filter(t => t.assignedTo === stat.employee.id && t.status === "in-progress");
+              const projectNumbers = [...new Set(empTasks.map(t => {
+                const proj = projects.find(p => p.name === t.title);
+                return proj ? proj.projectNumber : null;
+              }).filter(Boolean))];
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total Tasks</span>
-                  <span className="font-semibold">{stat.totalTasks}</span>
-                </div>
-                
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Completion Rate</span>
-                    <span className="font-semibold">{stat.completionRate}%</span>
-                  </div>
-                  <Progress value={stat.completionRate} className="h-2" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-success" />
-                    <span className="text-muted-foreground">Completed:</span>
-                    <span className="font-semibold">{stat.completed}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-warning" />
-                    <span className="text-muted-foreground">Active:</span>
-                    <span className="font-semibold">{stat.inProgress}</span>
-                  </div>
-                </div>
-
-                {stat.avgEfficiency > 0 && (
-                  <div className="flex items-center gap-2 pt-2 border-t">
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">Avg Efficiency:</span>
-                    <span className={`text-sm font-semibold ${stat.avgEfficiency >= 100 ? 'text-success' : 'text-warning'}`}>
-                      {stat.avgEfficiency}%
-                    </span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              return (
+                <Card key={stat.employee.id} className="hover:shadow-md transition-all cursor-pointer group" onClick={() => { setSelectedEmployee(stat.employee); setAddTaskOpen(false); }}>
+                  <CardContent className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                          {stat.employee.name.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm truncate">{stat.employee.name}</span>
+                          {projectNumbers.map(pn => (
+                            <span key={pn} className="text-[10px] bg-primary/10 text-primary border border-primary/20 rounded px-1.5 py-0.5 font-medium shrink-0">{pn}</span>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                          <span>{stat.employee.role}</span>
+                          <span className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-success" />{stat.completed}</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3 text-warning" />{stat.inProgress}</span>
+                          <span className="ml-auto font-medium text-foreground">{stat.completionRate}%</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform shrink-0" />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
       </div>
 
       {filteredStats.length === 0 && (

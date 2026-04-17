@@ -55,7 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Determine role based on email or specific admin ID
-      const role: UserRole = (data.email === ADMIN_EMAIL || data.id === ADMIN_ID || data.id === ADMIN2_ID || data.name === ADMIN2_NAME) ? "admin" : "employee";
+      const isAdmin = data.email === ADMIN_EMAIL || data.id === ADMIN_ID || data.id === ADMIN2_ID || data.name === ADMIN2_NAME;
+      const role: UserRole = isAdmin ? "admin" : (data.type === "team_leader" ? "team_leader" : "employee");
 
       const authenticatedUser: User = {
         id: data.id,

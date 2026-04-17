@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle, Clock, TrendingUp, Plus, ChevronDown, ChevronRight, Briefcase, ListTodo, CalendarClock } from "lucide-react";
 
 const priorityColors: Record<Priority, string> = {
@@ -166,6 +167,7 @@ export function EmployeeProfileDialog({
   const [targetProject, setTargetProject] = useState<SalesProject | null>(null);
   const [taskForm, setTaskForm] = useState({ description: "", deadline: "", priority: "medium" as Priority, projectId: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
 
   useEffect(() => {
     if (employee) refreshData();
@@ -191,22 +193,25 @@ export function EmployeeProfileDialog({
   const openAddTask = (project?: SalesProject) => {
     setTargetProject(project || null);
     setTaskForm({ description: "", deadline: "", priority: "medium", projectId: project?.id || "" });
+    setSelectedTemplates([]);
     setAddTaskOpen(true);
   };
 
   const handleAddTask = async () => {
-    if (!taskForm.description.trim() || submitting) return;
+    const description = selectedTemplates.length > 0
+      ? selectedTemplates.join(", ")
+      : taskForm.description.trim();
+    if (!description || submitting) return;
     setSubmitting(true);
     const isNone = !targetProject && (!taskForm.projectId || taskForm.projectId === "none");
     const project = isNone ? null : (localProjects.find(p => p.id === taskForm.projectId) || targetProject);
     const now = new Date().toISOString();
-    // If deadline has time use full ISO, if date-only keep as date string to avoid timezone shift
     const deadline = taskForm.deadline
       ? new Date(taskForm.deadline).toISOString()
       : project?.endDate || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
     await storeAddTask({
-      title: project ? project.name : taskForm.description.trim(),
-      description: taskForm.description,
+      title: project ? project.name : description,
+      description: description,
       assignedTo: employee.id,
       projectId: undefined,
       expectedTime: 0,
@@ -352,8 +357,39 @@ export function EmployeeProfileDialog({
               </div>
             )}
             <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="What needs to be done?" rows={3} />
+              {(() => {
+                const activeProject = targetProject || localProjects.find(p => p.id === taskForm.projectId);
+                const templates = activeProject?.taskTemplates || [];
+                if (templates.length > 0) {
+                  return (
+                    <>
+                      <Label>Select Tasks</Label>
+                      <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                        {templates.map((tmpl, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`ep-tmpl-${i}`}
+                              checked={selectedTemplates.includes(tmpl)}
+                              onCheckedChange={checked =>
+                                setSelectedTemplates(prev => checked ? [...prev, tmpl] : prev.filter(t => t !== tmpl))
+                              }
+                            />
+                            <label htmlFor={`ep-tmpl-${i}`} className="text-sm cursor-pointer">{tmpl}</label>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Or type a custom description below</p>
+                      <Textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="Custom description (optional if checkboxes selected)" rows={2} />
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    <Label>Description</Label>
+                    <Textarea value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="What needs to be done?" rows={3} />
+                  </>
+                );
+              })()}
             </div>
             <div className="space-y-2">
               <Label>Deadline</Label>
@@ -370,7 +406,7 @@ export function EmployeeProfileDialog({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleAddTask} className="w-full" disabled={!taskForm.description.trim() || (!targetProject && taskForm.projectId === "") || submitting}>
+            <Button onClick={handleAddTask} className="w-full" disabled={(selectedTemplates.length === 0 && !taskForm.description.trim()) || (!targetProject && taskForm.projectId === "") || submitting}>
               {submitting ? "Adding..." : "Add Task"}
             </Button>
           </div>
