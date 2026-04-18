@@ -228,21 +228,25 @@ export default function AdminDashboard() {
         <Card className="shadow-sm">
           <CardHeader><CardTitle className="text-base">Tasks by Employee</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={tasksByEmployee} onClick={(data) => {
-                if (data?.activePayload?.[0]?.payload?.id) {
-                  const emp = employees.find(e => e.id === data.activePayload[0].payload.id);
-                  if (emp) { setDialogOpen(false); setProfileEmployee(emp); }
-                }
-              }} style={{ cursor: "pointer" }}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis dataKey="name" fontSize={12} />
-                <YAxis fontSize={12} />
-                <Tooltip /><Legend />
-                <Bar dataKey="completed" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} name="Completed" />
-                <Bar dataKey="inProgress" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} name="In Progress" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: Math.max(500, tasksByEmployee.length * 80) }}>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={tasksByEmployee} onClick={(data) => {
+                    if (data?.activePayload?.[0]?.payload?.id) {
+                      const emp = employees.find(e => e.id === data.activePayload[0].payload.id);
+                      if (emp) { setDialogOpen(false); setProfileEmployee(emp); }
+                    }
+                  }} style={{ cursor: "pointer" }}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis dataKey="name" fontSize={12} />
+                    <YAxis fontSize={12} />
+                    <Tooltip /><Legend />
+                    <Bar dataKey="completed" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} name="Completed" />
+                    <Bar dataKey="inProgress" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} name="In Progress" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </CardContent>
         </Card>
         <Card className="shadow-sm">
