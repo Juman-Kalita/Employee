@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+﻿import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getSalesProjects, addNotification, deleteTask } from "@/lib/store";
 import { Task, Priority, TaskStatus, Employee, SalesProject } from "@/lib/types";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, CheckCircle, Clock, TrendingUp, User, ChevronRight, ListTodo, AlertCircle, PlusCircle, Trash2 } from "lucide-react";
+import { Plus, Search, CheckCircle, Clock, TrendingUp, User, ChevronRight, ListTodo, AlertCircle, PlusCircle, Trash2, X } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { EmployeeProfileDialog } from "@/components/EmployeeProfileDialog";
@@ -45,10 +46,15 @@ export default function TaskManagement() {
   const [newTaskForm, setNewTaskForm] = useState({ title: "", description: "", expectedTime: "", deadline: "", priority: "medium" as Priority });
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [otherTaskOpen, setOtherTaskOpen] = useState(false);
-  const [otherTaskForm, setOtherTaskForm] = useState({ title: "", description: "", actualTime: "", date: new Date().toISOString().split("T")[0] });
+  const [otherTaskDate, setOtherTaskDate] = useState(new Date().toISOString().split("T")[0]);
+  const [reportEntries, setReportEntries] = useState([{ description: "", from: "", to: "" }]);
   const [assignTaskOpen, setAssignTaskOpen] = useState(false);
   const [assignTaskForm, setAssignTaskForm] = useState({ title: "", description: "", toEmployee: "", deadline: "", priority: "medium" as Priority });
+  const [statDialogOpen, setStatDialogOpen] = useState(false);
+  const [statDialogType, setStatDialogType] = useState<"all" | "inProgress" | "completed">("all");
   const [adminView, setAdminView] = useState<"employees" | "tasks">("employees");
+  const [teamTaskDialogOpen, setTeamTaskDialogOpen] = useState(false);
+  const [teamTaskForm, setTeamTaskForm] = useState({ title: "", description: "", team: "", leaderId: "", deadline: "", priority: "medium" as Priority });
 
   const location = useLocation();
 
@@ -118,8 +124,32 @@ export default function TaskManagement() {
     );
   }, [employeeStats, search]);
 
+  const submitTeamTask = async () => {
+    if (!teamTaskForm.title || !teamTaskForm.leaderId || !teamTaskForm.deadline) return;
+    const now = new Date().toISOString();
+    await storeAddTask({
+      title: teamTaskForm.title,
+      description: teamTaskForm.description,
+      assignedTo: teamTaskForm.leaderId,
+      expectedTime: 0,
+      deadline: teamTaskForm.deadline,
+      priority: teamTaskForm.priority,
+      status: "in-progress" as TaskStatus,
+      createdAt: now,
+      startedAt: now,
+    });
+    await addNotification({
+      message: `New team task "${teamTaskForm.title}" assigned to you for the ${teamTaskForm.team} team. Please distribute to your team.`,
+      read: false,
+      createdAt: now,
+      forUser: teamTaskForm.leaderId,
+    });
+    setTeamTaskForm({ title: "", description: "", team: "", leaderId: "", deadline: "", priority: "medium" });
+    setTeamTaskDialogOpen(false);
+    await loadData();
+  };
+
   const handleCreate = async () => {
-    if (!form.title || !form.assignedTo) return;
     const now = new Date().toISOString();
     const task: Omit<Task, 'id'> = {
       title: form.title, 
@@ -144,20 +174,16 @@ export default function TaskManagement() {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
 
-    // Check if this task belongs to a project with a team leader
+    // Use startedAt if available, otherwise fall back to createdAt
+    const startRef = task.startedAt || task.createdAt;
+
     const project = projects.find(p => p.name === task.title);
     if (project?.leaderId && project.leaderId !== user?.id) {
-      // Route to team leader for approval
-      const updated = tasks.map(t => {
-        if (t.id !== id) return t;
-        const start = new Date(t.startedAt!);
-        const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
-        const actual = Math.max(actualMinutes, 1);
-        const rawEfficiency = Math.round((t.expectedTime / actual) * 100);
-        const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
-        return { ...t, status: "pending-approval" as TaskStatus, actualTime: actual, efficiency };
-      });
-      await saveTasks(updated);
+      const start = new Date(startRef);
+      const actual = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 1);
+      const rawEfficiency = Math.round((task.expectedTime / actual) * 100);
+      const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
+      await saveTasks([{ ...task, status: "pending-approval" as TaskStatus, startedAt: task.startedAt || now.toISOString(), actualTime: actual, efficiency }]);
       await addNotification({
         message: `Task "${task.description || task.title}" by ${user?.name} is pending your approval`,
         read: false,
@@ -165,17 +191,11 @@ export default function TaskManagement() {
         forUser: project.leaderId,
       });
     } else {
-      // No team leader — mark directly as completed
-      const updated = tasks.map(t => {
-        if (t.id !== id) return t;
-        const start = new Date(t.startedAt!);
-        const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
-        const actual = Math.max(actualMinutes, 1);
-        const rawEfficiency = Math.round((t.expectedTime / actual) * 100);
-        const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
-        return { ...t, status: "completed" as TaskStatus, completedAt: now.toISOString(), actualTime: actual, efficiency };
-      });
-      await saveTasks(updated);
+      const start = new Date(startRef);
+      const actual = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 1);
+      const rawEfficiency = Math.round((task.expectedTime / actual) * 100);
+      const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
+      await saveTasks([{ ...task, status: "completed" as TaskStatus, startedAt: task.startedAt || now.toISOString(), completedAt: now.toISOString(), actualTime: actual, efficiency }]);
     }
     await loadData();
   };
@@ -189,21 +209,18 @@ export default function TaskManagement() {
   const submitExtensionRequest = async () => {
     if (!selectedTask || !extensionForm.reason || !extensionForm.proposedDeadline) return;
     
-    const updated = tasks.map(t => {
-      if (t.id !== selectedTask.id) return t;
-      return {
-        ...t,
-        extensionRequest: {
-          reason: extensionForm.reason,
-          proposedDeadline: extensionForm.proposedDeadline,
-          requestedAt: new Date().toISOString(),
-          status: "pending" as const,
-          blockedByEmployee: extensionForm.blockedByEmployee || undefined
-        }
-      };
-    });
+    const updatedTask = {
+      ...selectedTask,
+      extensionRequest: {
+        reason: extensionForm.reason,
+        proposedDeadline: extensionForm.proposedDeadline,
+        requestedAt: new Date().toISOString(),
+        status: "pending" as const,
+        blockedByEmployee: extensionForm.blockedByEmployee || undefined
+      }
+    };
     
-    await saveTasks(updated);
+    await saveTasks([updatedTask]);
     
     // Notify admin
     await addNotification({
@@ -381,12 +398,33 @@ export default function TaskManagement() {
   };
 
   const submitOtherTask = async () => {
-    if (!otherTaskForm.title.trim() || !user) return;
-    const dateStr = otherTaskForm.date || new Date().toISOString().split("T")[0];
+    if (!user) return;
+    const validEntries = reportEntries.filter(e => e.description.trim() && e.from && e.to);
+    if (validEntries.length === 0) return;
+    const dateStr = otherTaskDate || new Date().toISOString().split("T")[0];
     const completedAt = new Date(dateStr).toISOString();
+
+    // Calculate total minutes across all entries
+    const totalMinutes = validEntries.reduce((sum, e) => {
+      const [fh, fm] = e.from.split(":").map(Number);
+      const [th, tm] = e.to.split(":").map(Number);
+      const diff = (th * 60 + tm) - (fh * 60 + fm);
+      return sum + Math.max(0, diff);
+    }, 0);
+
+    // Build combined description
+    const combinedDesc = validEntries.map(e => {
+      const [fh, fm] = e.from.split(":").map(Number);
+      const [th, tm] = e.to.split(":").map(Number);
+      const mins = Math.max(0, (th * 60 + tm) - (fh * 60 + fm));
+      const h = Math.floor(mins / 60), m = mins % 60;
+      const duration = h > 0 ? `${h}h ${m}m` : `${m}m`;
+      return `${e.description.trim()} (${e.from}–${e.to}, ${duration})`;
+    }).join(" | ");
+
     await storeAddTask({
-      title: otherTaskForm.title.trim(),
-      description: otherTaskForm.description.trim(),
+      title: "Daily Report",
+      description: combinedDesc,
       assignedTo: user.id,
       expectedTime: 0,
       deadline: dateStr,
@@ -395,9 +433,10 @@ export default function TaskManagement() {
       createdAt: completedAt,
       startedAt: completedAt,
       completedAt: completedAt,
-      actualTime: otherTaskForm.actualTime ? parseInt(otherTaskForm.actualTime) : 0,
+      actualTime: totalMinutes,
     });
-    setOtherTaskForm({ title: "", description: "", actualTime: "", date: new Date().toISOString().split("T")[0] });
+    setReportEntries([{ description: "", from: "", to: "" }]);
+    setOtherTaskDate(new Date().toISOString().split("T")[0]);
     setOtherTaskOpen(false);
     await loadData();
   };
@@ -414,8 +453,9 @@ export default function TaskManagement() {
         expectedTime: 0,
         deadline: assignTaskForm.deadline,
         priority: assignTaskForm.priority,
-        status: "pending" as TaskStatus,
+        status: "in-progress" as TaskStatus,
         createdAt: new Date().toISOString(),
+        startedAt: new Date().toISOString(),
       });
       if (newTask) {
         const targetEmp = employees.find(e => e.id === assignTaskForm.toEmployee);
@@ -439,7 +479,7 @@ export default function TaskManagement() {
       }
     };
 
-    const inProgressTasks = userTasks.filter(t => t.status === "in-progress");
+    const inProgressTasks = userTasks.filter(t => t.status === "in-progress" || t.status === "pending");
     const completedTasks = userTasks.filter(t => t.status === "completed");
     const notCompletedTasks = inProgressTasks.filter(t => t.cancellationRequest?.status === 'pending');
 
@@ -477,27 +517,27 @@ export default function TaskManagement() {
             </Button>
             <Button onClick={() => setOtherTaskOpen(true)} className="gap-2">
               <PlusCircle className="h-4 w-4" />
-              Other Tasks
+              Daily Report
             </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card>
+          <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setStatDialogType("all"); setStatDialogOpen(true); }}>
             <CardContent className="p-6 text-center">
               <ListTodo className="h-8 w-8 mx-auto mb-2 text-primary" />
               <p className="text-3xl font-bold">{userTasks.length}</p>
               <p className="text-sm text-muted-foreground">Total Assigned</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setStatDialogType("inProgress"); setStatDialogOpen(true); }}>
             <CardContent className="p-6 text-center">
               <Clock className="h-8 w-8 mx-auto mb-2 text-warning" />
               <p className="text-3xl font-bold">{inProgressTasks.length}</p>
               <p className="text-sm text-muted-foreground">In Progress</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => { setStatDialogType("completed"); setStatDialogOpen(true); }}>
             <CardContent className="p-6 text-center">
               <CheckCircle className="h-8 w-8 mx-auto mb-2 text-success" />
               <p className="text-3xl font-bold">{completedTasks.length}</p>
@@ -515,9 +555,11 @@ export default function TaskManagement() {
             </h2>
             <div className="space-y-3">
               {inProgressTasks.map(task => {
-                const startTime = new Date(task.startedAt!);
+                const startTime = new Date(task.startedAt || task.createdAt);
                 const now = new Date();
-                const elapsedMinutes = Math.round((now.getTime() - startTime.getTime()) / 60000);
+                const elapsedMinutes = task.startedAt
+                  ? Math.max(0, Math.round((now.getTime() - startTime.getTime()) / 60000))
+                  : 0;
                 // Don't show overtime if extension was approved or no expected time set
                 const isOvertime = task.extensionRequest?.status === 'approved' ? false : (task.expectedTime > 0 && elapsedMinutes > task.expectedTime);
                 
@@ -540,7 +582,7 @@ export default function TaskManagement() {
                           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                              <p className="text-sm font-medium">{fmtDateTime(task.createdAt)}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Deadline</p>
@@ -607,13 +649,13 @@ export default function TaskManagement() {
                           {task.rescheduleRequest?.status === "approved" ? (
                             <div className="text-center p-2 bg-success/10 border border-success/20 rounded text-xs text-success font-medium">
                               ✓ Rescheduled for next day
-                              <p className="font-bold mt-0.5">{new Date(task.deadline).toLocaleDateString()}</p>
+                              <p className="font-bold mt-0.5">{fmtDeadline(task.deadline)}</p>
                             </div>
                           ) : task.rescheduleRequest?.status === "pending" ? (
                             <div className="text-center p-2 bg-primary/5 border border-primary/20 rounded text-xs text-primary">
                               ⏳ Reschedule pending approval
                             </div>
-                          ) : !task.extensionRequest && !task.cancellationRequest && (
+                          ) : (!task.extensionRequest || task.extensionRequest.status === "approved" || task.extensionRequest.status === "rejected") && !task.cancellationRequest && (
                             <>
                               <Button onClick={() => openExtensionDialog(task)} size="sm" variant="outline" className="gap-2">
                                 <AlertCircle className="h-4 w-4" />
@@ -722,7 +764,7 @@ export default function TaskManagement() {
                         <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                            <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                            <p className="text-sm font-medium">{fmtDateTime(task.createdAt)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Completed On</p>
@@ -798,7 +840,7 @@ export default function TaskManagement() {
                           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                             <span>By: <span className="font-medium text-foreground">{assignedEmp?.name || "Unknown"}</span></span>
                             <span>Project: {task.title}</span>
-                            <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
+                            <span>Due: {fmtDeadline(task.deadline)}</span>
                           </div>
                         </div>
                         <div className="flex gap-2 shrink-0">
@@ -848,8 +890,8 @@ export default function TaskManagement() {
                             {task.description && <p className="text-sm text-muted-foreground mb-2">{task.description}</p>}
                             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1"><User className="h-3 w-3" />Assigned to: <span className="font-medium text-foreground">{assignedTo?.name || "Unknown"}</span></span>
-                              <span>Deadline: {new Date(task.deadline).toLocaleDateString()}</span>
-                              <span>Assigned on: {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                              <span>Deadline: {fmtDeadline(task.deadline)}</span>
+                              <span>Assigned on: {fmtDateTime(task.createdAt)}</span>
                             </div>
                           </div>
                         </div>
@@ -870,7 +912,7 @@ export default function TaskManagement() {
             <div>
               <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <PlusCircle className="h-5 w-5 text-primary" />
-                Other Tasks ({otherTasks.length})
+                Daily Report ({otherTasks.length})
               </h2>
               <div className="space-y-3">
                 {otherTasks.map(task => (
@@ -882,7 +924,7 @@ export default function TaskManagement() {
                       </div>
                       {task.description && <p className="text-sm text-muted-foreground mb-3">{task.description}</p>}
                       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                        <span>Date: {new Date(task.deadline).toLocaleDateString()}</span>
+                        <span>Date: {fmtDeadline(task.deadline)}</span>
                         {task.actualTime && task.actualTime > 0 && <span>Time spent: {task.actualTime}m</span>}
                       </div>
                     </CardContent>
@@ -895,27 +937,102 @@ export default function TaskManagement() {
 
         {/* Other Task Dialog */}
         <Dialog open={otherTaskOpen} onOpenChange={setOtherTaskOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>Add Other Task</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <p className="text-sm text-muted-foreground">Log any extra work you did outside your assigned tasks.</p>
-              <div className="space-y-2">
-                <Label>Title</Label>
-                <Input value={otherTaskForm.title} onChange={e => setOtherTaskForm(f => ({ ...f, title: e.target.value }))} placeholder="What did you work on?" />
-              </div>
-              <div className="space-y-2">
-                <Label>Description (optional)</Label>
-                <Textarea value={otherTaskForm.description} onChange={e => setOtherTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief description..." rows={3} />
-              </div>
+          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+            <DialogHeader><DialogTitle>Daily Report</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2 overflow-y-auto flex-1 pr-1">
               <div className="space-y-2">
                 <Label>Date</Label>
-                <Input type="date" value={otherTaskForm.date} onChange={e => setOtherTaskForm(f => ({ ...f, date: e.target.value }))} max={new Date().toISOString().split("T")[0]} />
+                <Input type="date" value={otherTaskDate} onChange={e => setOtherTaskDate(e.target.value)} max={new Date().toISOString().split("T")[0]} />
               </div>
+
               <div className="space-y-2">
-                <Label>Time Spent (minutes, optional)</Label>
-                <Input type="number" value={otherTaskForm.actualTime} onChange={e => setOtherTaskForm(f => ({ ...f, actualTime: e.target.value }))} placeholder="e.g. 45" min="1" />
+                <div className="flex items-center justify-between">
+                  <Label>Work Entries</Label>
+                  <button
+                    type="button"
+                    onClick={() => setReportEntries(prev => [...prev, { description: "", from: "", to: "" }])}
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" /> Add Row
+                  </button>
+                </div>
+
+                {/* Header row */}
+                <div className="grid grid-cols-[1fr_90px_90px_24px] gap-2 text-xs text-muted-foreground px-1">
+                  <span>Description</span><span>From</span><span>To</span><span></span>
+                </div>
+
+                {reportEntries.map((entry, i) => {
+                  // Auto-calculate duration
+                  let duration = "";
+                  if (entry.from && entry.to) {
+                    const [fh, fm] = entry.from.split(":").map(Number);
+                    const [th, tm] = entry.to.split(":").map(Number);
+                    const mins = Math.max(0, (th * 60 + tm) - (fh * 60 + fm));
+                    const h = Math.floor(mins / 60), m = mins % 60;
+                    duration = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                  }
+                  return (
+                    <div key={i} className="space-y-1">
+                      <div className="grid grid-cols-[1fr_90px_90px_24px] gap-2 items-center">
+                        <Input
+                          value={entry.description}
+                          onChange={e => setReportEntries(prev => prev.map((r, j) => j === i ? { ...r, description: e.target.value } : r))}
+                          placeholder="What did you do?"
+                          className="text-sm"
+                        />
+                        <Input
+                          type="time"
+                          value={entry.from}
+                          onChange={e => setReportEntries(prev => prev.map((r, j) => j === i ? { ...r, from: e.target.value } : r))}
+                          className="text-sm"
+                        />
+                        <Input
+                          type="time"
+                          value={entry.to}
+                          onChange={e => setReportEntries(prev => prev.map((r, j) => j === i ? { ...r, to: e.target.value } : r))}
+                          className="text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setReportEntries(prev => prev.length > 1 ? prev.filter((_, j) => j !== i) : prev)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {duration && (
+                        <p className="text-xs text-primary pl-1">⏱ {duration}</p>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Total */}
+                {(() => {
+                  const total = reportEntries.reduce((sum, e) => {
+                    if (!e.from || !e.to) return sum;
+                    const [fh, fm] = e.from.split(":").map(Number);
+                    const [th, tm] = e.to.split(":").map(Number);
+                    return sum + Math.max(0, (th * 60 + tm) - (fh * 60 + fm));
+                  }, 0);
+                  if (total === 0) return null;
+                  const h = Math.floor(total / 60), m = total % 60;
+                  return (
+                    <div className="text-sm font-medium text-right pt-1 border-t">
+                      Total: {h > 0 ? `${h}h ${m}m` : `${m}m`}
+                    </div>
+                  );
+                })()}
               </div>
-              <Button onClick={submitOtherTask} className="w-full" disabled={!otherTaskForm.title.trim()}>Submit</Button>
+
+              <Button
+                onClick={submitOtherTask}
+                className="w-full"
+                disabled={reportEntries.every(e => !e.description.trim() || !e.from || !e.to)}
+              >
+                Submit Report
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -1049,6 +1166,48 @@ export default function TaskManagement() {
           </DialogContent>
         </Dialog>
 
+        {/* Stat Detail Dialog */}
+        <Dialog open={statDialogOpen} onOpenChange={setStatDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {statDialogType === "all" ? `All Tasks (${userTasks.length})` :
+                 statDialogType === "inProgress" ? `In Progress (${inProgressTasks.length})` :
+                 `Completed (${completedTasks.length})`}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 mt-2">
+              {(statDialogType === "all" ? userTasks :
+                statDialogType === "inProgress" ? inProgressTasks :
+                completedTasks).map(task => (
+                <Card key={task.id} className={`border-l-4 ${task.status === "completed" ? "border-l-success" : "border-l-warning"}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="font-semibold">{task.title}</h3>
+                      <div className="flex gap-1 shrink-0">
+                        <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
+                        <Badge variant="outline" className={task.status === "completed" ? "bg-success/10 text-success border-success/20" : "bg-warning/10 text-warning border-warning/20"}>
+                          {task.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    {task.description && <p className="text-sm text-muted-foreground mb-2">{task.description}</p>}
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      <span>Assigned: {fmtDate(task.createdAt)}</span>
+                      <span>Deadline: {fmtDeadline(task.deadline)}</span>
+                      {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {fmtDate(task.completedAt!)}</span>}
+                      {task.actualTime && task.actualTime > 0 && <span>Time: {task.actualTime}m</span>}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {(statDialogType === "all" ? userTasks : statDialogType === "inProgress" ? inProgressTasks : completedTasks).length === 0 && (
+                <div className="text-center py-8 text-muted-foreground"><ListTodo className="h-10 w-10 mx-auto mb-3 opacity-40" /><p>No tasks</p></div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Assign Task Dialog */}
         <Dialog open={assignTaskOpen} onOpenChange={setAssignTaskOpen}>
           <DialogContent className="max-w-md">
@@ -1177,9 +1336,14 @@ export default function TaskManagement() {
             {adminView === "employees" ? "Click on an employee to view their profile and assign tasks" : "All tasks and their assigned employees"}
           </p>
         </div>
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-          <button onClick={() => setAdminView("employees")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "employees" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Employees</button>
-          <button onClick={() => setAdminView("tasks")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "tasks" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Tasks</button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" className="gap-2" onClick={() => setTeamTaskDialogOpen(true)}>
+            <Plus className="h-4 w-4" /> Assign Task to Team
+          </Button>
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            <button onClick={() => setAdminView("employees")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "employees" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Employees</button>
+            <button onClick={() => setAdminView("tasks")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${adminView === "tasks" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Tasks</button>
+          </div>
         </div>
       </div>
 
@@ -1189,30 +1353,30 @@ export default function TaskManagement() {
       </div>
 
       {adminView === "tasks" && (
-        <div className="space-y-3">
+        <div className="space-y-1">
           {tasks.filter(t => !search || (t.description || t.title).toLowerCase().includes(search.toLowerCase()) || employees.find(e => e.id === t.assignedTo)?.name.toLowerCase().includes(search.toLowerCase())).map(task => {
             const emp = employees.find(e => e.id === task.assignedTo);
             const isInProgress = task.status === "in-progress";
             return (
               <Card key={task.id} className={`border-l-4 ${isInProgress ? "border-l-warning" : "border-l-success"}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="font-medium">{task.description || task.title}</p>
-                        <Badge variant="outline" className={priorityColors[task.priority]}>{task.priority}</Badge>
-                        <Badge variant="outline" className={isInProgress ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"}>{isInProgress ? "Active" : "Done"}</Badge>
+                <CardContent className="px-3 py-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-sm truncate">{task.description || task.title}</p>
+                        <Badge variant="outline" className={`text-xs ${priorityColors[task.priority]}`}>{task.priority}</Badge>
+                        <Badge variant="outline" className={`text-xs ${isInProgress ? "bg-warning/10 text-warning border-warning/20" : "bg-success/10 text-success border-success/20"}`}>{isInProgress ? "Active" : "Done"}</Badge>
                       </div>
-                      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-0.5">
                         <span className="flex items-center gap-1"><User className="h-3 w-3" />{emp?.name || "Unknown"} — {emp?.role}</span>
                         <span>Project: {task.title}</span>
-                        <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                        {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
-                        {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+                        <span>Due: {fmtDeadline(task.deadline)}</span>
+                        {task.createdAt && <span>Assigned: {fmtDateTime(task.createdAt)}</span>}
+                        {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {fmtDateTime(task.completedAt!)}</span>}
                       </div>
                     </div>
-                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 w-8 p-0 shrink-0" onClick={async () => { await deleteTask(task.id); await loadData(); }}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-7 w-7 p-0 shrink-0" onClick={async () => { await deleteTask(task.id); await loadData(); }}>
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </CardContent>
@@ -1299,9 +1463,79 @@ export default function TaskManagement() {
           await loadData();
         }}
       />
+
+      {/* Assign Task to Team Dialog */}
+      {(() => {
+        const TEAMS = ["Design","Electrical","Production","Store","Services","Documentation","Purchase","Admin - HR","Admin - Accountant"];
+        const teamAssignments: Record<string, string> = (() => { try { return JSON.parse(localStorage.getItem("team_assignments") || "{}"); } catch { return {}; } })();
+        const teamLeaders = teamTaskForm.team
+          ? employees.filter(e => teamAssignments[e.id] === teamTaskForm.team && e.type === "team_leader")
+          : [];
+        const teamMembers = teamTaskForm.team
+          ? employees.filter(e => teamAssignments[e.id] === teamTaskForm.team)
+          : [];
+        const selectableLeaders = teamLeaders.length > 0 ? teamLeaders : teamMembers;
+        return (
+          <Dialog open={teamTaskDialogOpen} onOpenChange={setTeamTaskDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader><DialogTitle>Assign Task to Team</DialogTitle></DialogHeader>
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <Label>Task Title</Label>
+                  <Input value={teamTaskForm.title} onChange={e => setTeamTaskForm(f => ({ ...f, title: e.target.value }))} placeholder="Enter task title..." />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea value={teamTaskForm.description} onChange={e => setTeamTaskForm(f => ({ ...f, description: e.target.value }))} placeholder="Describe the task..." rows={3} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Team</Label>
+                  <Select value={teamTaskForm.team} onValueChange={v => setTeamTaskForm(f => ({ ...f, team: v, leaderId: "" }))}>
+                    <SelectTrigger><SelectValue placeholder="Select team" /></SelectTrigger>
+                    <SelectContent>
+                      {TEAMS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Team Leader</Label>
+                  <Select value={teamTaskForm.leaderId} onValueChange={v => setTeamTaskForm(f => ({ ...f, leaderId: v }))} disabled={!teamTaskForm.team || selectableLeaders.length === 0}>
+                    <SelectTrigger><SelectValue placeholder={!teamTaskForm.team ? "Select a team first" : selectableLeaders.length === 0 ? "No members in this team" : "Select team leader"} /></SelectTrigger>
+                    <SelectContent>
+                      {selectableLeaders.map(e => <SelectItem key={e.id} value={e.id}>{e.name} — {e.role}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Deadline</Label>
+                    <Input type="date" value={teamTaskForm.deadline} onChange={e => setTeamTaskForm(f => ({ ...f, deadline: e.target.value }))} min={new Date().toISOString().split("T")[0]} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Priority</Label>
+                    <Select value={teamTaskForm.priority} onValueChange={v => setTeamTaskForm(f => ({ ...f, priority: v as Priority }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button onClick={submitTeamTask} className="w-full" disabled={!teamTaskForm.title || !teamTaskForm.leaderId || !teamTaskForm.deadline}>
+                  Assign to Team Leader
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
+
+
 
 
 

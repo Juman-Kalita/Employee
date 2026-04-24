@@ -1,5 +1,6 @@
 ﻿import { useMemo, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { fmtDate, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { getTasks, saveTasks, addNotification, getEmployees } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -435,9 +436,11 @@ export default function EmployeeDashboard() {
               const isCompleted = task.status === "completed";
               
               if (isInProgress) {
-                const startTime = new Date(task.startedAt!);
+                const startTime = new Date(task.startedAt || task.createdAt);
                 const now = new Date();
-                const elapsedMinutes = Math.round((now.getTime() - startTime.getTime()) / 60000);
+                const elapsedMinutes = task.startedAt
+                  ? Math.max(0, Math.round((now.getTime() - startTime.getTime()) / 60000))
+                  : 0;
                 // Don't show overtime if extension was approved
                 const isOvertime = task.extensionRequest?.status === 'approved' ? false : elapsedMinutes > task.expectedTime;
                 
@@ -460,7 +463,7 @@ export default function EmployeeDashboard() {
                           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                              <p className="text-sm font-medium">{fmtDateTime(task.createdAt)}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Started On</p>
@@ -468,7 +471,7 @@ export default function EmployeeDashboard() {
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Deadline</p>
-                              <p className="text-sm font-medium">{new Date(task.deadline).toLocaleDateString()}</p>
+                              <p className="text-sm font-medium">{fmtDeadline(task.deadline)}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Expected Time</p>
@@ -516,7 +519,7 @@ export default function EmployeeDashboard() {
                             <CheckCircle2 className="h-4 w-4" />
                             Complete
                           </Button>
-                          {!task.extensionRequest && (
+                          {(!task.extensionRequest || task.extensionRequest.status === "approved" || task.extensionRequest.status === "rejected") && (
                             <Button onClick={() => openExtensionDialog(task)} size="sm" variant="outline" className="gap-2">
                               <AlertCircle className="h-4 w-4" />
                               Request Extension
@@ -557,11 +560,11 @@ export default function EmployeeDashboard() {
                           <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-muted/50 rounded-lg">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
-                              <p className="text-sm font-medium">{new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                              <p className="text-sm font-medium">{fmtDateTime(task.createdAt)}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Completed On</p>
-                              <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                              <p className="text-sm font-medium">{fmtDateTime(task.completedAt!)}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Expected Time</p>
@@ -758,4 +761,5 @@ export default function EmployeeDashboard() {
     </div>
   );
 }
+
 

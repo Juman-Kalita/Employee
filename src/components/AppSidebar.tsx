@@ -6,7 +6,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, AlertCircle, CalendarCheck, Briefcase, Wrench, Package } from "lucide-react";
+import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, AlertCircle, CalendarCheck, Briefcase, Wrench, Package, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ const adminNav = [
   { title: "Extensions", url: "/extensions", icon: AlertCircle },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Employees", url: "/employees", icon: Users },
+  { title: "Teams", url: "/teams", icon: UsersRound },
   { title: "Service", url: "/service", icon: Wrench },
   { title: "Inventory", url: "/inventory", icon: Package },
   { title: "Settings", url: "/settings", icon: Settings },

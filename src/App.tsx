@@ -21,6 +21,7 @@ import InventoryPage from "@/pages/InventoryPage";
 import InventoryLoginPage from "@/pages/InventoryLoginPage";
 import InventoryPanelLayout from "@/pages/InventoryPanelLayout";
 import SettingsPage from "@/pages/SettingsPage";
+import TeamsPage from "@/pages/TeamsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="/attendance" element={<AttendancePage />} />
                 <Route path="/employees" element={<EmployeeManagement />} />
                 <Route path="/employees/:id" element={<EmployeePerformance />} />
+                <Route path="/teams" element={<TeamsPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>

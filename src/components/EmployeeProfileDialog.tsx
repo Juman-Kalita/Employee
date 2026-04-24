@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Employee, Task, SalesProject, Priority } from "@/lib/types";
 import { addTask as storeAddTask, addNotification, getTasks, getSalesProjects } from "@/lib/store";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle, Clock, TrendingUp, Plus, ChevronDown, ChevronRight, Briefcase, ListTodo, CalendarClock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const priorityColors: Record<Priority, string> = {
   high: "bg-destructive/10 text-destructive border-destructive/20",
@@ -24,9 +25,12 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
   onExtensionApproval?: (id: string, approved: boolean) => void;
   onRescheduleApproval?: (id: string, approved: boolean) => void;
 }) {
-  const isInProgress = task.status === "in-progress";
-  const elapsedMinutes = isInProgress && task.startedAt
-    ? Math.round((Date.now() - new Date(task.startedAt).getTime()) / 60000)
+  const isInProgress = task.status === "in-progress" || task.status === "pending";
+  // Only show elapsed time for real in-progress tasks with a valid startedAt
+  // Don't show for daily report tasks (startedAt === completedAt) or tasks without startedAt
+  const isDailyReport = task.startedAt && task.completedAt && task.startedAt === task.completedAt;
+  const elapsedMinutes = isInProgress && task.startedAt && !isDailyReport
+    ? Math.max(0, Math.round((Date.now() - new Date(task.startedAt).getTime()) / 60000))
     : null;
   const isOvertime = elapsedMinutes !== null && task.expectedTime > 0 && elapsedMinutes > task.expectedTime;
 
@@ -43,15 +47,9 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
           </div>
         </div>
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-2">
-          <span>Due: {(() => {
-            const d = new Date(task.deadline);
-            const hasTime = task.deadline.includes("T") && !task.deadline.endsWith("T00:00:00.000Z");
-            return hasTime
-              ? `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-              : d.toLocaleDateString();
-          })()}</span>
-          {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
-          {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+          <span>Due: {fmtDeadline(task.deadline)}</span>
+          {task.createdAt && <span>Assigned: {fmtDateTime(task.createdAt)}</span>}
+          {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {fmtDateTime(task.completedAt)}</span>}
         </div>
         {isInProgress && elapsedMinutes !== null && (
           <div className={`flex items-center gap-2 text-xs p-1.5 rounded ${isOvertime ? "bg-destructive/5 text-destructive" : "bg-primary/5 text-primary"}`}>
@@ -329,7 +327,7 @@ export function EmployeeProfileDialog({
 
           {standaloneTasks.length > 0 && (
             <div className="mt-4">
-              <h3 className="font-semibold flex items-center gap-2 mb-3"><ListTodo className="h-4 w-4" /> Other Tasks ({standaloneTasks.length})</h3>
+              <h3 className="font-semibold flex items-center gap-2 mb-3"><ListTodo className="h-4 w-4" /> Daily Report ({standaloneTasks.length})</h3>
               <div className="space-y-2">
                 {standaloneTasks.map(task => (
                   <TaskCard key={task.id} task={task} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />

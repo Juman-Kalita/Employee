@@ -111,7 +111,7 @@ export async function getTasks(): Promise<Task[]> {
     expectedTime: t.expected_time,
     deadline: t.deadline,
     priority: t.priority as 'low' | 'medium' | 'high',
-    status: t.status as 'pending' | 'in-progress' | 'completed',
+    status: t.status as 'pending' | 'in-progress' | 'completed' | 'pending-approval',
     createdAt: t.created_at,
     startedAt: t.started_at || undefined,
     completedAt: t.completed_at || undefined,
@@ -202,7 +202,7 @@ export async function updateTask(task: Task): Promise<boolean> {
     efficiency: task.efficiency || null
   };
 
-  // Only add extension fields if they exist (for backward compatibility)
+  // Always write extension fields to ensure re-submissions overwrite old data
   if (task.extensionRequest) {
     updateData.extension_reason = task.extensionRequest.reason || null;
     updateData.extension_proposed_deadline = task.extensionRequest.proposedDeadline || null;
@@ -210,6 +210,13 @@ export async function updateTask(task: Task): Promise<boolean> {
     updateData.extension_status = task.extensionRequest.status || null;
     updateData.extension_admin_response = task.extensionRequest.adminResponse || null;
     updateData.extension_blocked_by_employee = task.extensionRequest.blockedByEmployee || null;
+  } else {
+    updateData.extension_status = null;
+    updateData.extension_reason = null;
+    updateData.extension_proposed_deadline = null;
+    updateData.extension_requested_at = null;
+    updateData.extension_admin_response = null;
+    updateData.extension_blocked_by_employee = null;
   }
 
   // Only add cancellation fields if they exist
