@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useMemo } from "react";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { getAttendance, AttendanceRecord, getTasks } from "@/lib/store";
 import { getEmployees } from "@/lib/store";
 import { Employee, Task } from "@/lib/types";
@@ -11,7 +12,7 @@ import { Clock, LogIn, LogOut, Search, Users, CheckCircle, AlertCircle, ChevronD
 
 function formatTime(iso?: string) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return fmtTime(iso);
 }
 
 function formatDate(dateStr: string) {
@@ -187,7 +188,7 @@ function AttendanceRow({ record, employee, tasks }: {
                         Reason: {task.rescheduleRequest?.reason}
                       </p>
                       {task.rescheduleRequest?.status === "approved" && (
-                        <p className="text-xs text-success">Rescheduled to: {new Date(task.deadline).toLocaleDateString()}</p>
+                        <p className="text-xs text-success">Rescheduled to: {fmtDate(task.deadline)}</p>
                       )}
                     </div>
                   ))}
@@ -226,7 +227,7 @@ function AttendanceRow({ record, employee, tasks }: {
                   {inProgressTasks.filter(t => !t.rescheduleRequest && !t.cancellationRequest).map(task => (
                     <div key={task.id} className="p-3 bg-muted/50 border border-border rounded-lg">
                       <p className="text-sm font-medium">{task.description || task.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Due: {new Date(task.deadline).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Due: {fmtDate(task.deadline)}</p>
                     </div>
                   ))}
                 </div>
@@ -386,3 +387,5 @@ export default function AttendancePage() {
     </div>
   );
 }
+
+

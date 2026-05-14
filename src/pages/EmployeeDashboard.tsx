@@ -502,7 +502,7 @@ export default function EmployeeDashboard() {
                               </div>
                               <p className="text-xs text-muted-foreground mb-1">Reason: {task.extensionRequest.reason}</p>
                               <p className="text-xs text-muted-foreground mb-1">
-                                Proposed Deadline: {new Date(task.extensionRequest.proposedDeadline).toLocaleDateString()}
+                                Proposed Deadline: {fmtDate(task.extensionRequest.proposedDeadline)}
                               </p>
                               {task.extensionRequest.adminResponse && (
                                 <p className="text-xs text-muted-foreground">Admin Response: {task.extensionRequest.adminResponse}</p>
@@ -617,7 +617,7 @@ export default function EmployeeDashboard() {
           <div className="space-y-4 pt-2">
             <div>
               <p className="text-sm text-muted-foreground mb-2">Task: {selectedTask?.title}</p>
-              <p className="text-sm text-muted-foreground">Current Deadline: {selectedTask && new Date(selectedTask.deadline).toLocaleDateString()}</p>
+              <p className="text-sm text-muted-foreground">Current Deadline: {selectedTask && fmtDate(selectedTask.deadline)}</p>
             </div>
             <div className="space-y-2">
               <Label>Reason for Extension</Label>
@@ -757,5 +757,6 @@ export default function EmployeeDashboard() {
     </div>
   );
 }
+
 
 

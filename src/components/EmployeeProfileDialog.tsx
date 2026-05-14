@@ -72,7 +72,7 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
           <div className="mt-2 p-2 bg-warning/5 border border-warning/20 rounded text-xs">
             <p className="font-medium mb-1">Extension Request</p>
             <p className="text-muted-foreground mb-1">{task.extensionRequest.reason}</p>
-            <p className="text-muted-foreground mb-2">New deadline: {new Date(task.extensionRequest.proposedDeadline).toLocaleDateString()}</p>
+            <p className="text-muted-foreground mb-2">New deadline: {fmtDate(task.extensionRequest.proposedDeadline)}</p>
             <div className="flex gap-2">
               <Button size="sm" className="h-6 text-xs" onClick={() => onExtensionApproval(task.id, true)}>Approve</Button>
               <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => onExtensionApproval(task.id, false)}>Reject</Button>
@@ -88,7 +88,7 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
             <div className="flex items-center gap-1 font-medium mb-1">
               <CalendarClock className="h-3 w-3" />
               {task.rescheduleRequest.status === "pending" ? "Incomplete Task Reason - Pending" :
-               task.rescheduleRequest.status === "approved" ? `Rescheduled to ${new Date(task.deadline).toLocaleDateString()}` :
+               task.rescheduleRequest.status === "approved" ? `Rescheduled to ${fmtDate(task.deadline)}` :
                "Reschedule Rejected"}
             </div>
             <p className="text-muted-foreground mb-1">{task.rescheduleRequest.reason}</p>
@@ -413,4 +413,5 @@ export function EmployeeProfileDialog({
     </>
   );
 }
+
 

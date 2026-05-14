@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { getSalesProjects, getTasks, getEmployees, addTask as storeAddTask, addNotification } from "@/lib/store";
 import { SalesProject, Task, Employee, Priority } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -107,12 +108,12 @@ export default function ServicePage() {
                       </div>
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground ml-7">
                         <span className="flex items-center gap-1"><Hash className="h-3.5 w-3.5" />{project.projectNumber}</span>
-                        <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(project.startDate).toLocaleDateString()} — {new Date(project.endDate).toLocaleDateString()}</span>
+                        <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{fmtDate(project.startDate)} — {fmtDate(project.endDate)}</span>
                         <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-success" />{completedTasks}/{projectTasks.length} tasks done</span>
                         {project.completedAt && (
                           <span className="flex items-center gap-1 text-success">
                             <CheckCircle className="h-3.5 w-3.5" />
-                            Completed: {new Date(project.completedAt).toLocaleDateString()} at {new Date(project.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            Completed: {fmtDate(project.completedAt)} at {fmtTime(project.completedAt)}
                           </span>
                         )}
                       </div>
@@ -160,8 +161,8 @@ export default function ServicePage() {
                                         </div>
                                       </div>
                                       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                        {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
-                                        {task.status === "completed" && task.completedAt && <span className="text-success">Done: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+                                        {task.createdAt && <span>Assigned: {fmtDate(task.createdAt)} {fmtTime(task.createdAt)}</span>}
+                                        {task.status === "completed" && task.completedAt && <span className="text-success">Done: {fmtDate(task.completedAt)} {fmtTime(task.completedAt)}</span>}
                                         {task.actualTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{task.actualTime}m</span>}
                                         {task.efficiency !== undefined && task.expectedTime > 0 && (
                                           <span className={`flex items-center gap-1 ${task.efficiency >= 100 ? "text-success" : (task.efficiency ?? 0) < 0 ? "text-destructive" : "text-warning"}`}>
@@ -227,4 +228,6 @@ export default function ServicePage() {
     </div>
   );
 }
+
+
 

@@ -1,4 +1,5 @@
 ﻿import { useMemo, useEffect, useState } from "react";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { getTasks, getEmployees, getSalesProjects, saveTasks, addNotification } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Users, ListTodo, CheckCircle2, Clock, TrendingUp } from "lucide-react";
@@ -140,8 +141,8 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>Assigned to: {employee?.name}</span>
                     <span>Status: {task.status}</span>
-                    <span>Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                    {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>}
+                    <span>Due: {fmtDate(task.deadline)}</span>
+                    {task.createdAt && <span>Assigned: {fmtDate(task.createdAt)} at {fmtTime(task.createdAt)}</span>}
                   </div>
                 </CardContent>
               </Card>
@@ -164,7 +165,7 @@ export default function AdminDashboard() {
                   <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
                   <div className="flex items-center gap-4 text-xs mb-2">
                     <span className="text-muted-foreground">By: {employee?.name}</span>
-                    <span className="text-muted-foreground">Completed: {new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                    <span className="text-muted-foreground">Completed: {fmtDate(task.completedAt!)} at {fmtTime(task.completedAt!)}</span>
                     <span className="text-muted-foreground">Time: {task.actualTime}m</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -195,8 +196,8 @@ export default function AdminDashboard() {
                   <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
                   <div className="flex items-center gap-4 text-xs mb-2">
                     <span className="text-muted-foreground">By: {employee?.name}</span>
-                    <span className="text-muted-foreground">Due: {new Date(task.deadline).toLocaleDateString()}</span>
-                    {task.createdAt && <span className="text-muted-foreground">Assigned: {new Date(task.createdAt).toLocaleDateString()} at {new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</span>}
+                    <span className="text-muted-foreground">Due: {fmtDate(task.deadline)}</span>
+                    {task.createdAt && <span className="text-muted-foreground">Assigned: {fmtDate(task.createdAt)} at {fmtTime(task.createdAt)}</span>}
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-warning" />
@@ -290,4 +291,6 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+
 

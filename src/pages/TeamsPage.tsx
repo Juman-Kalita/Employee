@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { getEmployees, addTask, addNotification, getTasks } from "@/lib/store";
 import { Employee, Priority, TaskStatus, Task } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,7 +172,7 @@ export default function TeamsPage() {
                               <div key={t.id} className="flex items-center gap-2 text-xs bg-muted/40 rounded px-2 py-1">
                                 <ListTodo className="h-3 w-3 text-primary shrink-0" />
                                 <span className="truncate flex-1">{t.description || t.title}</span>
-                                <span className="text-muted-foreground shrink-0">Due {new Date(t.deadline).toLocaleDateString()}</span>
+                                <span className="text-muted-foreground shrink-0">Due {fmtDate(t.deadline)}</span>
                               </div>
                             ))}
                           </div>
@@ -303,3 +304,5 @@ function EmployeeRow({ emp, team, onAssign }: { emp: Employee; team: Team | ""; 
     </div>
   );
 }
+
+

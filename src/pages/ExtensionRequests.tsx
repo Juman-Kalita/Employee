@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { getTasks, saveTasks, updateTask, getEmployees, addNotification } from "@/lib/store";
 import { Task, Employee } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -104,9 +105,9 @@ export default function ExtensionRequests() {
                       <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
                       <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-muted/50 rounded-lg">
                         <div><p className="text-xs text-muted-foreground mb-1">Employee</p><p className="text-sm font-medium flex items-center gap-2"><User className="h-4 w-4" />{employee?.name}</p></div>
-                        <div><p className="text-xs text-muted-foreground mb-1">Current Deadline</p><p className="text-sm font-medium flex items-center gap-2"><Clock className="h-4 w-4" />{new Date(task.deadline).toLocaleDateString()}</p></div>
-                        <div><p className="text-xs text-muted-foreground mb-1">Requested On</p><p className="text-sm font-medium">{new Date(task.extensionRequest!.requestedAt).toLocaleDateString()}</p></div>
-                        <div><p className="text-xs text-muted-foreground mb-1">Proposed Deadline</p><p className="text-sm font-medium text-primary">{new Date(task.extensionRequest!.proposedDeadline).toLocaleDateString()}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-1">Current Deadline</p><p className="text-sm font-medium flex items-center gap-2"><Clock className="h-4 w-4" />{fmtDate(task.deadline)}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-1">Requested On</p><p className="text-sm font-medium">{fmtDate(task.extensionRequest!.requestedAt)}</p></div>
+                        <div><p className="text-xs text-muted-foreground mb-1">Proposed Deadline</p><p className="text-sm font-medium text-primary">{fmtDate(task.extensionRequest!.proposedDeadline)}</p></div>
                       </div>
                       <div className="mb-4 p-3 bg-warning/5 border border-warning/20 rounded">
                         <p className="text-xs font-semibold text-warning mb-1">Reason for Extension:</p>
@@ -165,8 +166,8 @@ export default function ExtensionRequests() {
                         <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
                         <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-muted/50 rounded-lg">
                           <div><p className="text-xs text-muted-foreground mb-1">Employee</p><p className="text-sm font-medium flex items-center gap-2"><User className="h-4 w-4" />{employee?.name}</p></div>
-                          <div><p className="text-xs text-muted-foreground mb-1">Current Deadline</p><p className="text-sm font-medium flex items-center gap-2"><Clock className="h-4 w-4" />{new Date(task.deadline).toLocaleDateString()}</p></div>
-                          <div><p className="text-xs text-muted-foreground mb-1">Requested On</p><p className="text-sm font-medium">{new Date(task.rescheduleRequest!.requestedAt).toLocaleDateString()}</p></div>
+                          <div><p className="text-xs text-muted-foreground mb-1">Current Deadline</p><p className="text-sm font-medium flex items-center gap-2"><Clock className="h-4 w-4" />{fmtDate(task.deadline)}</p></div>
+                          <div><p className="text-xs text-muted-foreground mb-1">Requested On</p><p className="text-sm font-medium">{fmtDate(task.rescheduleRequest!.requestedAt)}</p></div>
                           <div><p className="text-xs text-muted-foreground mb-1">If Approved</p><p className="text-sm font-medium text-primary">Rescheduled to tomorrow</p></div>
                         </div>
                         <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded">
@@ -223,7 +224,7 @@ export default function ExtensionRequests() {
                           <div><p className="text-xs text-muted-foreground mb-1">Employee</p><p className="text-sm font-medium flex items-center gap-2"><User className="h-4 w-4" />{employee?.name}</p></div>
                           <div><p className="text-xs text-muted-foreground mb-1">Email</p><p className="text-sm font-medium">{employee?.email}</p></div>
                           <div><p className="text-xs text-muted-foreground mb-1">Role</p><p className="text-sm font-medium">{employee?.role}</p></div>
-                          <div><p className="text-xs text-muted-foreground mb-1">Reported On</p><p className="text-sm font-medium">{new Date(task.cancellationRequest!.requestedAt).toLocaleDateString()} at {new Date(task.cancellationRequest!.requestedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p></div>
+                          <div><p className="text-xs text-muted-foreground mb-1">Reported On</p><p className="text-sm font-medium">{fmtDate(task.cancellationRequest!.requestedAt)} at {fmtTime(task.cancellationRequest!.requestedAt)}</p></div>
                         </div>
                         <div className="p-3 bg-warning/5 border border-warning/20 rounded">
                           <p className="text-xs font-semibold text-warning mb-1">Reason for Not Completing:</p>
@@ -241,3 +242,5 @@ export default function ExtensionRequests() {
     </div>
   );
 }
+
+

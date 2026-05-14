@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { getSalesProjects, addSalesProject, deleteSalesProject, completeSalesProject, getEmployees, getTasks, addNotification, addTask as storeAddTask, updateSalesProjectTemplates } from "@/lib/store";
 import { SalesProject, Employee, Task, Priority } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -159,8 +160,8 @@ export default function SalesPage() {
                       </div>
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground ml-7">
                         <span className="flex items-center gap-1"><Hash className="h-3.5 w-3.5" />{project.projectNumber}</span>
-                        <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(project.startDate).toLocaleDateString()} — {new Date(project.endDate).toLocaleDateString()}</span>
-                        <span className="flex items-center gap-1 text-muted-foreground">Created: {new Date(project.createdAt).toLocaleDateString()} at {new Date(project.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{fmtDate(project.startDate)} — {fmtDate(project.endDate)}</span>
+                        <span className="flex items-center gap-1 text-muted-foreground">Created: {fmtDate(project.createdAt)} at {fmtTime(project.createdAt)}</span>
                         <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-success" />{completed} done</span>
                         <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-warning" />{inProgress} active</span>
                       </div>
@@ -222,8 +223,8 @@ export default function SalesPage() {
                                           const hasTime = task.deadline.includes("T") && !task.deadline.endsWith("T00:00:00.000Z");
                                           return hasTime ? `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : d.toLocaleDateString();
                                         })()}</span>
-                                        {task.createdAt && <span>Assigned: {new Date(task.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {new Date(task.createdAt).toLocaleDateString()}</span>}
-                                        {task.status === "completed" && task.completedAt && <span className="text-success">Done: {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {new Date(task.completedAt).toLocaleDateString()}</span>}
+                                        {task.createdAt && <span>Assigned: {fmtDateTime(task.createdAt)}</span>}
+                                        {task.status === "completed" && task.completedAt && <span className="text-success">Done: {fmtDateTime(task.completedAt)}</span>}
                                         {task.actualTime && <span>Time: {task.actualTime}m</span>}
                                         {task.efficiency !== undefined && task.expectedTime > 0 && (
                                           <span className={task.efficiency >= 100 ? "text-success" : (task.efficiency ?? 0) < 0 ? "text-destructive" : "text-warning"}>Efficiency: {task.efficiency}%</span>
@@ -393,4 +394,6 @@ export default function SalesPage() {
     </div>
   );
 }
+
+
 

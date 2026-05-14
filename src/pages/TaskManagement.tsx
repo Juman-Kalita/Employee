@@ -624,7 +624,7 @@ export default function TaskManagement() {
                               </div>
                               <p className="text-xs text-muted-foreground mb-1">Reason: {task.extensionRequest.reason}</p>
                               <p className="text-xs text-muted-foreground mb-1">
-                                Proposed Deadline: {new Date(task.extensionRequest.proposedDeadline).toLocaleDateString()}
+                                Proposed Deadline: {fmtDate(task.extensionRequest.proposedDeadline)}
                               </p>
                               {task.extensionRequest.adminResponse && (
                                 <p className="text-xs text-muted-foreground">Admin Response: {task.extensionRequest.adminResponse}</p>
@@ -721,7 +721,7 @@ export default function TaskManagement() {
                             <p className="text-xs font-semibold text-warning mb-1">Reason:</p>
                             <p className="text-sm">{task.cancellationRequest?.reason}</p>
                             <p className="text-xs text-muted-foreground mt-2">
-                              Reported: {new Date(task.cancellationRequest!.requestedAt).toLocaleDateString()} at {new Date(task.cancellationRequest!.requestedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              Reported: {fmtDate(task.cancellationRequest!.requestedAt)} at {fmtTime(task.cancellationRequest!.requestedAt)}
                             </p>
                           </div>
                         </div>
@@ -765,7 +765,7 @@ export default function TaskManagement() {
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Completed On</p>
-                            <p className="text-sm font-medium">{new Date(task.completedAt!).toLocaleDateString()} at {new Date(task.completedAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+                            <p className="text-sm font-medium">{fmtDate(task.completedAt!)} at {fmtTime(task.completedAt!)}</p>
                           </div>
                           {task.expectedTime > 0 && (
                             <div>
@@ -1043,7 +1043,7 @@ export default function TaskManagement() {
             <div className="space-y-4 pt-2">
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Task: {selectedTask?.title}</p>
-                <p className="text-sm text-muted-foreground">Current Deadline: {selectedTask && new Date(selectedTask.deadline).toLocaleDateString()}</p>
+                <p className="text-sm text-muted-foreground">Current Deadline: {selectedTask && fmtDate(selectedTask.deadline)}</p>
               </div>
               <div className="space-y-2">
                 <Label>Reason for Extension</Label>
@@ -1531,6 +1531,7 @@ export default function TaskManagement() {
     </div>
   );
 }
+
 
 
 

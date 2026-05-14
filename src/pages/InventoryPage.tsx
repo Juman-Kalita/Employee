@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
 import { getInventory, addInventoryItem, deleteInventoryItem, getSalesProjects } from "@/lib/store";
 import { InventoryItem, SalesProject } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,7 +102,7 @@ export default function InventoryPage({ isAdmin: isAdminProp }: { isAdmin?: bool
                       )}
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5" />
-                        Arrived: {new Date(item.arrivedAt).toLocaleDateString()} at {new Date(item.arrivedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        Arrived: {fmtDate(item.arrivedAt)} at {fmtTime(item.arrivedAt)}
                       </span>
                     </div>
                   </div>
@@ -189,3 +190,5 @@ export default function InventoryPage({ isAdmin: isAdminProp }: { isAdmin?: bool
     </div>
   );
 }
+
+
