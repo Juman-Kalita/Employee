@@ -283,6 +283,7 @@ export default function AdminDashboard() {
         employee={profileEmployee}
         tasks={tasks}
         projects={projects}
+        employees={employees}
         onClose={() => setProfileEmployee(null)}
         onDataChange={loadData}
         onExtensionApproval={handleExtensionApproval}

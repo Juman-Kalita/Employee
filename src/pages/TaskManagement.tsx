@@ -130,6 +130,7 @@ export default function TaskManagement() {
       title: teamTaskForm.title,
       description: teamTaskForm.description,
       assignedTo: teamTaskForm.leaderId,
+      assignedBy: user?.id,
       expectedTime: 0,
       deadline: teamTaskForm.deadline,
       priority: teamTaskForm.priority,
@@ -153,7 +154,8 @@ export default function TaskManagement() {
     const task: Omit<Task, 'id'> = {
       title: form.title, 
       description: form.description,
-      assignedTo: form.assignedTo, 
+      assignedTo: form.assignedTo,
+      assignedBy: user?.id,
       expectedTime: parseInt(form.expectedTime) || 0,
       deadline: form.deadline || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
       priority: form.priority, 
@@ -342,6 +344,7 @@ export default function TaskManagement() {
       title: newTaskForm.title,
       description: newTaskForm.description,
       assignedTo: selectedEmployee.id,
+      assignedBy: user?.id,
       expectedTime: newTaskForm.expectedTime ? parseInt(newTaskForm.expectedTime) : 0,
       deadline: newTaskForm.deadline || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
       priority: newTaskForm.priority,
@@ -595,6 +598,18 @@ export default function TaskManagement() {
                                 <p className="text-sm font-medium">{task.expectedTime} minutes</p>
                               </div>
                             )}
+                            {task.assignedBy && (() => {
+                              const allotter = employees.find(e => e.id === task.assignedBy);
+                              return allotter ? (
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Allotted By</p>
+                                  <p className="text-sm font-medium flex items-center gap-1">
+                                    <User className="h-3 w-3 text-primary" />
+                                    {allotter.name}
+                                  </p>
+                                </div>
+                              ) : null;
+                            })()}
                           </div>
 
                           <div className="flex items-center gap-2 p-2 bg-primary/5 rounded border border-primary/20 mb-3">
@@ -777,6 +792,18 @@ export default function TaskManagement() {
                             <p className="text-xs text-muted-foreground mb-1">Actual Time</p>
                             <p className="text-sm font-medium">{task.actualTime} minutes</p>
                           </div>
+                          {task.assignedBy && (() => {
+                            const allotter = employees.find(e => e.id === task.assignedBy);
+                            return allotter ? (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Allotted By</p>
+                                <p className="text-sm font-medium flex items-center gap-1">
+                                  <User className="h-3 w-3 text-primary" />
+                                  {allotter.name}
+                                </p>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
 
                         {task.expectedTime > 0 && (
@@ -1369,6 +1396,10 @@ export default function TaskManagement() {
                         <span>Project: {task.title}</span>
                         <span>Due: {fmtDeadline(task.deadline)}</span>
                         {task.createdAt && <span>Assigned: {fmtDateTime(task.createdAt)}</span>}
+                        {task.assignedBy && (() => {
+                          const allotter = employees.find(e => e.id === task.assignedBy);
+                          return allotter ? <span className="flex items-center gap-1 text-primary font-medium">Allotted by: {allotter.name}</span> : null;
+                        })()}
                         {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {fmtDateTime(task.completedAt!)}</span>}
                       </div>
                     </div>
@@ -1443,6 +1474,8 @@ export default function TaskManagement() {
         employee={selectedEmployee}
         tasks={tasks}
         projects={projects}
+        employees={employees}
+        assignedById={user?.id}
         onClose={() => setSelectedEmployee(null)}
         onDataChange={loadData}
         onExtensionApproval={handleExtensionApproval}

@@ -20,8 +20,9 @@ const priorityColors: Record<Priority, string> = {
   low: "bg-success/10 text-success border-success/20",
 };
 
-function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
+function TaskCard({ task, employees, onExtensionApproval, onRescheduleApproval }: {
   task: Task;
+  employees: { id: string; name: string }[];
   onExtensionApproval?: (id: string, approved: boolean) => void;
   onRescheduleApproval?: (id: string, approved: boolean) => void;
 }) {
@@ -35,7 +36,7 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
   const isOvertime = elapsedMinutes !== null && task.expectedTime > 0 && elapsedMinutes > task.expectedTime;
 
   return (
-    <Card className={`border-l-4 ${isInProgress ? "border-l-warning" : "border-l-success"}`}>
+    <Card className={`border-l-4 ${isInProgress ? "border-l-warning" : "border-l-success"}`}> 
       <CardContent className="p-3">
         <div className="flex items-start justify-between gap-2 mb-1">
           <p className="text-sm font-medium">{task.description || task.title}</p>
@@ -49,6 +50,14 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-2">
           <span>Due: {fmtDeadline(task.deadline)}</span>
           {task.createdAt && <span>Assigned: {fmtDateTime(task.createdAt)}</span>}
+          {task.assignedBy && (() => {
+            const allotter = employees.find(e => e.id === task.assignedBy);
+            return allotter ? (
+              <span className="flex items-center gap-1 text-primary font-medium">
+                Allotted by: {allotter.name}
+              </span>
+            ) : null;
+          })()}
           {task.status === "completed" && task.completedAt && <span className="text-success">Completed: {fmtDateTime(task.completedAt)}</span>}
         </div>
         {isInProgress && elapsedMinutes !== null && (
@@ -105,9 +114,10 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
   );
 }
 
-function SalesProjectRow({ project, tasks, onAddTask, onExtensionApproval, onRescheduleApproval }: {
+function SalesProjectRow({ project, tasks, employees, onAddTask, onExtensionApproval, onRescheduleApproval }: {
   project: SalesProject;
   tasks: Task[];
+  employees: { id: string; name: string }[];
   onAddTask: (project?: SalesProject) => void;
   onExtensionApproval?: (id: string, approved: boolean) => void;
   onRescheduleApproval?: (id: string, approved: boolean) => void;
@@ -129,7 +139,7 @@ function SalesProjectRow({ project, tasks, onAddTask, onExtensionApproval, onRes
         <div className="border-t bg-muted/20 p-3 space-y-2">
           {projectTasks.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">No tasks yet</p>}
           {projectTasks.map(task => (
-            <TaskCard key={task.id} task={task} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />
+            <TaskCard key={task.id} task={task} employees={employees} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />
           ))}
           <Button size="sm" variant="outline" className="w-full gap-2 mt-1" onClick={e => { e.stopPropagation(); onAddTask(project); }}>
             <Plus className="h-3 w-3" /> Add Task
@@ -144,6 +154,8 @@ export interface EmployeeProfileDialogProps {
   employee: Employee | null;
   tasks: Task[];
   projects: SalesProject[];
+  employees: Employee[];
+  assignedById?: string; // ID of the user opening the dialog (for setting assignedBy on new tasks)
   onClose: () => void;
   onDataChange: () => void;
   onExtensionApproval?: (taskId: string, approved: boolean) => void;
@@ -154,6 +166,8 @@ export function EmployeeProfileDialog({
   employee,
   tasks,
   projects,
+  employees,
+  assignedById,
   onClose,
   onDataChange,
   onExtensionApproval,
@@ -211,6 +225,7 @@ export function EmployeeProfileDialog({
       title: project ? project.name : description,
       description: description,
       assignedTo: employee.id,
+      assignedBy: assignedById,
       projectId: undefined,
       expectedTime: 0,
       deadline,
@@ -317,6 +332,7 @@ export function EmployeeProfileDialog({
                   key={project.id}
                   project={project}
                   tasks={localTasks.filter(t => t.assignedTo === employee.id)}
+                  employees={employees}
                   onAddTask={openAddTask}
                   onExtensionApproval={onExtensionApproval}
                   onRescheduleApproval={onRescheduleApproval}
@@ -330,7 +346,7 @@ export function EmployeeProfileDialog({
               <h3 className="font-semibold flex items-center gap-2 mb-3"><ListTodo className="h-4 w-4" /> Daily Report ({standaloneTasks.length})</h3>
               <div className="space-y-2">
                 {standaloneTasks.map(task => (
-                  <TaskCard key={task.id} task={task} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />
+                  <TaskCard key={task.id} task={task} employees={employees} onExtensionApproval={onExtensionApproval} onRescheduleApproval={onRescheduleApproval} />
                 ))}
               </div>
             </div>
