@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Employee, Task, SalesProject, Priority } from "@/lib/types";
 import { addTask as storeAddTask, addNotification, getTasks, getSalesProjects } from "@/lib/store";
 import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
@@ -62,8 +62,8 @@ function TaskCard({ task, onExtensionApproval, onRescheduleApproval }: {
           <div className="flex items-center gap-3 text-xs mt-1">
             <span className="text-muted-foreground">Actual: {task.actualTime}m</span>
             {task.expectedTime > 0 && (
-              <span className={task.efficiency! >= 100 ? "text-success" : "text-warning"}>
-                Efficiency: {Math.min(100, task.efficiency || 0)}%
+              <span className={task.efficiency! >= 100 ? "text-success" : (task.efficiency ?? 0) < 0 ? "text-destructive" : "text-warning"}>
+                Efficiency: {task.efficiency || 0}%
               </span>
             )}
           </div>
@@ -184,7 +184,7 @@ export function EmployeeProfileDialog({
   const completed = empTasks.filter(t => t.status === "completed").length;
   const inProgress = empTasks.filter(t => t.status === "in-progress").length;
   const avgEfficiency = completed > 0
-    ? Math.round(empTasks.filter(t => t.status === "completed").reduce((s, t) => s + Math.min(100, t.efficiency || 0), 0) / completed)
+    ? Math.round(empTasks.filter(t => t.status === "completed").reduce((s, t) => s + (t.efficiency ?? 0), 0) / completed)
     : 0;
   const standaloneTasks = empTasks.filter(t => !localProjects.some(p => p.name === t.title));
 
@@ -413,3 +413,4 @@ export function EmployeeProfileDialog({
     </>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { getAttendance, AttendanceRecord, getTasks } from "@/lib/store";
 import { getEmployees } from "@/lib/store";
 import { Employee, Task } from "@/lib/types";
@@ -150,9 +150,9 @@ function AttendanceRow({ record, employee, tasks }: {
                           </span>
                         )}
                         {task.efficiency !== undefined && task.expectedTime > 0 && (
-                          <span className={`flex items-center gap-1 font-semibold ${task.efficiency >= 100 ? "text-success" : "text-warning"}`}>
+                          <span className={`flex items-center gap-1 font-semibold ${task.efficiency >= 100 ? "text-success" : (task.efficiency ?? 0) < 0 ? "text-destructive" : "text-warning"}`}>
                             <TrendingUp className="h-3 w-3" />
-                            Efficiency: {Math.min(100, task.efficiency)}%
+                            Efficiency: {task.efficiency}%
                           </span>
                         )}
                       </div>

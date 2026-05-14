@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { getSalesProjects, addSalesProject, deleteSalesProject, completeSalesProject, getEmployees, getTasks, addNotification, addTask as storeAddTask, updateSalesProjectTemplates } from "@/lib/store";
 import { SalesProject, Employee, Task, Priority } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -226,7 +226,7 @@ export default function SalesPage() {
                                         {task.status === "completed" && task.completedAt && <span className="text-success">Done: {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} {new Date(task.completedAt).toLocaleDateString()}</span>}
                                         {task.actualTime && <span>Time: {task.actualTime}m</span>}
                                         {task.efficiency !== undefined && task.expectedTime > 0 && (
-                                          <span className={task.efficiency >= 100 ? "text-success" : "text-warning"}>Efficiency: {Math.min(100, task.efficiency)}%</span>
+                                          <span className={task.efficiency >= 100 ? "text-success" : (task.efficiency ?? 0) < 0 ? "text-destructive" : "text-warning"}>Efficiency: {task.efficiency}%</span>
                                         )}
                                       </div>
                                     </div>
@@ -393,3 +393,4 @@ export default function SalesPage() {
     </div>
   );
 }
+

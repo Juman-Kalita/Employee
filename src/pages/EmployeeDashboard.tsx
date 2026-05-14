@@ -1,6 +1,6 @@
 ﻿import { useMemo, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { fmtDate, fmtDateTime, fmtDeadline } from "@/lib/utils";
+import { fmtDate, fmtDateTime, fmtDeadline, calcEfficiency } from "@/lib/utils";
 import { getTasks, saveTasks, addNotification, getEmployees } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,7 +56,7 @@ export default function EmployeeDashboard() {
   const notCompletedToday = inProgress.filter(t => t.cancellationRequest?.reason);
   // Cap each task's efficiency at 100% before averaging
   const avgEfficiency = completed.length 
-    ? Math.round(completed.reduce((s, t) => s + Math.min(100, t.efficiency || 0), 0) / completed.length)
+    ? Math.round(completed.reduce((s, t) => s + (t.efficiency ?? 0), 0) / completed.length)
     : 0;
 
   const completeTask = async (id: string) => {
@@ -68,11 +68,9 @@ export default function EmployeeDashboard() {
     const allProjects = await import("@/lib/store").then(m => m.getSalesProjects());
     const project = allProjects.find((p: import("@/lib/types").SalesProject) => p.name === task.title);
     if (project?.leaderId && project.leaderId !== user?.id) {
-      const start = new Date(task.startedAt!);
-      const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
-      const actual = Math.max(actualMinutes, 1);
-      const rawEfficiency = Math.round((task.expectedTime / actual) * 100);
-      const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
+      const start = new Date(task.startedAt || task.createdAt);
+      const actual = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 1);
+      const efficiency = calcEfficiency(task.expectedTime, actual, task.deadline, now.toISOString());
       const updated = tasks.map(t => t.id !== id ? t : { ...t, status: "pending-approval" as TaskStatus, actualTime: actual, efficiency });
       await saveTasks(updated);
       await addNotification({
@@ -84,11 +82,9 @@ export default function EmployeeDashboard() {
     } else {
       const updated = tasks.map(t => {
         if (t.id !== id) return t;
-        const start = new Date(t.startedAt!);
-        const actualMinutes = Math.round((now.getTime() - start.getTime()) / 60000);
-        const actual = Math.max(actualMinutes, 1);
-        const rawEfficiency = Math.round((t.expectedTime / actual) * 100);
-        const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
+        const start = new Date(t.startedAt || t.createdAt);
+        const actual = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 1);
+        const efficiency = calcEfficiency(t.expectedTime, actual, t.deadline, now.toISOString());
         return { ...t, status: "completed" as TaskStatus, completedAt: now.toISOString(), actualTime: actual, efficiency };
       });
       await saveTasks(updated);
@@ -579,8 +575,8 @@ export default function EmployeeDashboard() {
                           <div className="flex items-center gap-2 p-2 bg-success/5 rounded border border-success/20">
                             <TrendingUp className="h-4 w-4 text-success" />
                             <span className="text-sm font-medium">Efficiency:</span>
-                            <span className={`text-sm font-bold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                              {Math.min(100, task.efficiency || 0)}%
+                            <span className={`text-sm font-bold ${(task.efficiency ?? 0) >= 100 ? 'text-success' : (task.efficiency ?? 0) < 0 ? 'text-destructive' : 'text-warning'}`}>
+                              {task.efficiency ?? 0}%
                             </span>
                             {task.efficiency! >= 100 ? (
                               <span className="text-xs text-success ml-auto">

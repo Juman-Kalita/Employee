@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { getTasks, saveTasks, addTask as storeAddTask, getEmployees, getSalesProjects, addNotification, deleteTask } from "@/lib/store";
 import { Task, Priority, TaskStatus, Employee, SalesProject } from "@/lib/types";
-import { fmtDate, fmtTime, fmtDateTime, fmtDeadline } from "@/lib/utils";
+import { fmtDate, fmtTime, fmtDateTime, fmtDeadline, calcEfficiency } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,9 +100,8 @@ export default function TaskManagement() {
       const completed = empTasks.filter(t => t.status === "completed").length;
       const inProgress = empTasks.filter(t => t.status === "in-progress").length;
       const completionRate = empTasks.length > 0 ? Math.round((completed / empTasks.length) * 100) : 0;
-      // Cap each task's efficiency at 100% before averaging
       const avgEfficiency = completed > 0 
-        ? Math.round(empTasks.filter(t => t.status === "completed").reduce((sum, t) => sum + Math.min(100, t.efficiency || 0), 0) / completed)
+        ? Math.round(empTasks.filter(t => t.status === "completed").reduce((sum, t) => sum + (t.efficiency ?? 0), 0) / completed)
         : 0;
       
       return {
@@ -181,8 +180,7 @@ export default function TaskManagement() {
     if (project?.leaderId && project.leaderId !== user?.id) {
       const start = new Date(startRef);
       const actual = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 1);
-      const rawEfficiency = Math.round((task.expectedTime / actual) * 100);
-      const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
+      const efficiency = calcEfficiency(task.expectedTime, actual, task.deadline, now.toISOString());
       await saveTasks([{ ...task, status: "pending-approval" as TaskStatus, startedAt: task.startedAt || now.toISOString(), actualTime: actual, efficiency }]);
       await addNotification({
         message: `Task "${task.description || task.title}" by ${user?.name} is pending your approval`,
@@ -193,8 +191,7 @@ export default function TaskManagement() {
     } else {
       const start = new Date(startRef);
       const actual = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 1);
-      const rawEfficiency = Math.round((task.expectedTime / actual) * 100);
-      const efficiency = rawEfficiency > 100 ? 100 : rawEfficiency;
+      const efficiency = calcEfficiency(task.expectedTime, actual, task.deadline, now.toISOString());
       await saveTasks([{ ...task, status: "completed" as TaskStatus, startedAt: task.startedAt || now.toISOString(), completedAt: now.toISOString(), actualTime: actual, efficiency }]);
     }
     await loadData();
@@ -786,8 +783,8 @@ export default function TaskManagement() {
                         <div className="flex items-center gap-2 p-2 bg-success/5 rounded border border-success/20">
                           <TrendingUp className="h-4 w-4 text-success" />
                           <span className="text-sm font-medium">Efficiency:</span>
-                          <span className={`text-sm font-bold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                            {Math.min(100, task.efficiency || 0)}%
+                          <span className={`text-sm font-bold ${task.efficiency! >= 100 ? 'text-success' : (task.efficiency ?? 0) < 0 ? "text-destructive" : "text-warning"}`}>
+                            {task.efficiency || 0}%
                           </span>
                           {task.efficiency! >= 100 ? (
                             <span className="text-xs text-success ml-auto">
@@ -1534,6 +1531,8 @@ export default function TaskManagement() {
     </div>
   );
 }
+
+
 
 
 

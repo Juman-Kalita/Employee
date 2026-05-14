@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { getSalesProjects, getTasks, getEmployees, addTask as storeAddTask, addNotification } from "@/lib/store";
 import { SalesProject, Task, Employee, Priority } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -164,8 +164,8 @@ export default function ServicePage() {
                                         {task.status === "completed" && task.completedAt && <span className="text-success">Done: {new Date(task.completedAt).toLocaleDateString()} {new Date(task.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
                                         {task.actualTime && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{task.actualTime}m</span>}
                                         {task.efficiency !== undefined && task.expectedTime > 0 && (
-                                          <span className={`flex items-center gap-1 ${task.efficiency >= 100 ? "text-success" : "text-warning"}`}>
-                                            <TrendingUp className="h-3 w-3" />Efficiency: {Math.min(100, task.efficiency)}%
+                                          <span className={`flex items-center gap-1 ${task.efficiency >= 100 ? "text-success" : (task.efficiency ?? 0) < 0 ? "text-destructive" : "text-warning"}`}>
+                                            <TrendingUp className="h-3 w-3" />Efficiency: {task.efficiency}%
                                           </span>
                                         )}
                                       </div>
@@ -227,3 +227,4 @@ export default function ServicePage() {
     </div>
   );
 }
+

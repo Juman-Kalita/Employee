@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from "react";
+﻿import { useMemo, useEffect, useState } from "react";
 import { getTasks, getEmployees, getSalesProjects, saveTasks, addNotification } from "@/lib/store";
 import { StatsCard } from "@/components/StatsCard";
 import { Users, ListTodo, CheckCircle2, Clock, TrendingUp } from "lucide-react";
@@ -169,8 +169,8 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-success" />
-                    <span className={`text-sm font-semibold ${task.efficiency! >= 100 ? 'text-success' : 'text-warning'}`}>
-                      Efficiency: {Math.min(100, task.efficiency || 0)}%
+                    <span className={`text-sm font-semibold ${task.efficiency! >= 100 ? 'text-success' : (task.efficiency ?? 0) < 0 ? "text-destructive" : "text-warning"}`}>
+                      Efficiency: {task.efficiency || 0}%
                     </span>
                   </div>
                 </CardContent>
@@ -290,3 +290,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
