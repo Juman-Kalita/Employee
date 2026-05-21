@@ -178,24 +178,22 @@ export default function TaskManagement() {
     // Use startedAt if available, otherwise fall back to createdAt
     const startRef = task.startedAt || task.createdAt;
 
-    const project = projects.find(p => p.name === task.title);
-    if (project?.leaderId && project.leaderId !== user?.id) {
-      const start = new Date(startRef);
-      const actual = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 1);
-      const efficiency = calcEfficiency(task.expectedTime, actual, task.deadline, now.toISOString());
-      await saveTasks([{ ...task, status: "pending-approval" as TaskStatus, startedAt: task.startedAt || now.toISOString(), actualTime: actual, efficiency }]);
-      await addNotification({
-        message: `Task "${task.description || task.title}" by ${user?.name} is pending your approval`,
-        read: false,
-        createdAt: now.toISOString(),
-        forUser: project.leaderId,
-      });
-    } else {
-      const start = new Date(startRef);
-      const actual = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 1);
-      const efficiency = calcEfficiency(task.expectedTime, actual, task.deadline, now.toISOString());
-      await saveTasks([{ ...task, status: "completed" as TaskStatus, startedAt: task.startedAt || now.toISOString(), completedAt: now.toISOString(), actualTime: actual, efficiency }]);
+    const start = new Date(startRef);
+    const actual = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 1);
+    const efficiency = calcEfficiency(task.expectedTime, actual, task.deadline, now.toISOString());
+
+    // Always route through pending-approval — admin must approve all completions
+    const success = await saveTasks([{ ...task, status: "pending-approval" as TaskStatus, startedAt: task.startedAt || now.toISOString(), actualTime: actual, efficiency }]);
+    if (!success) {
+      console.error("completeTask: saveTasks failed — check that the DB status constraint includes 'pending-approval'. Run supabase-migration-pending-approval.sql.");
+      return;
     }
+    await addNotification({
+      message: `${user?.name} marked task "${task.description || task.title}" as complete — pending your approval`,
+      read: false,
+      createdAt: now.toISOString(),
+      forUser: "00000000-0000-0000-0000-000000000001", // Admin
+    });
     await loadData();
   };
 
@@ -481,6 +479,7 @@ export default function TaskManagement() {
 
     const inProgressTasks = userTasks.filter(t => t.status === "in-progress" || t.status === "pending");
     const completedTasks = userTasks.filter(t => t.status === "completed");
+    const pendingAdminApproval = userTasks.filter(t => t.status === "pending-approval");
     const notCompletedTasks = inProgressTasks.filter(t => t.cancellationRequest?.status === 'pending');
 
     // Team leader: tasks in their projects pending approval
@@ -545,6 +544,76 @@ export default function TaskManagement() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Pending Admin Approval */}
+        {pendingAdminApproval.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-warning" />
+              Pending Approval ({pendingAdminApproval.length})
+            </h2>
+            <div className="space-y-3">
+              {pendingAdminApproval.map(task => {
+                const allotter = task.assignedBy ? employees.find(e => e.id === task.assignedBy) : null;
+                return (
+                  <Card key={task.id} className="hover:shadow-md transition-all border-l-4 border-l-orange-400 opacity-90">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <h3 className="font-semibold text-lg">{task.title}</h3>
+                            <Badge variant="outline" className={priorityColors[task.priority]}>
+                              {task.priority}
+                            </Badge>
+                            <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20 animate-pulse">
+                              ⏳ Awaiting Admin Approval
+                            </Badge>
+                          </div>
+                          {task.description && <p className="text-sm text-muted-foreground mb-3">{task.description}</p>}
+                          <div className="grid grid-cols-2 gap-3 p-3 bg-muted/50 rounded-lg">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Assigned On</p>
+                              <p className="text-sm font-medium">{fmtDateTime(task.createdAt)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Deadline</p>
+                              <p className="text-sm font-medium">{fmtDeadline(task.deadline)}</p>
+                            </div>
+                            {task.actualTime != null && task.actualTime > 0 && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Time Taken</p>
+                                <p className="text-sm font-medium">{task.actualTime} minutes</p>
+                              </div>
+                            )}
+                            {task.expectedTime > 0 && task.efficiency != null && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Efficiency</p>
+                                <p className={`text-sm font-medium ${task.efficiency >= 100 ? "text-success" : task.efficiency < 0 ? "text-destructive" : "text-warning"}`}>
+                                  {task.efficiency}%
+                                </p>
+                              </div>
+                            )}
+                            {allotter && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Allotted By</p>
+                                <p className="text-sm font-medium flex items-center gap-1">
+                                  <User className="h-3 w-3 text-primary" />{allotter.name}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-3 p-2 bg-orange-500/5 border border-orange-500/20 rounded text-xs text-orange-600 dark:text-orange-400">
+                            You marked this task as complete. Waiting for admin to review and approve.
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* In Progress Tasks */}
         {inProgressTasks.length > 0 && (
@@ -649,12 +718,10 @@ export default function TaskManagement() {
                         </div>
                         <div className="flex flex-col gap-2 shrink-0">
                           {(() => {
-                            const proj = projects.find(p => p.name === task.title);
-                            const hasLeader = proj?.leaderId && proj.leaderId !== user?.id;
                             return (
                               <Button onClick={() => completeTask(task.id)} size="sm" className="gap-2">
                                 <CheckCircle className="h-4 w-4" />
-                                {hasLeader ? "Submit for Approval" : "Complete"}
+                                Mark Complete
                               </Button>
                             );
                           })()}

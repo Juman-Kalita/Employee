@@ -6,7 +6,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, AlertCircle, CalendarCheck, Briefcase, Wrench, Package, UsersRound } from "lucide-react";
+import { LayoutDashboard, ListTodo, Users, BarChart3, Settings, LogOut, Moon, Sun, AlertCircle, CalendarCheck, Briefcase, Wrench, Package, UsersRound, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ const adminNav = [
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Tasks", url: "/tasks", icon: ListTodo },
   { title: "Sales", url: "/sales", icon: Briefcase },
+  { title: "Approvals", url: "/approvals", icon: ClipboardCheck },
   { title: "Extensions", url: "/extensions", icon: AlertCircle },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck },
   { title: "Employees", url: "/employees", icon: Users },
@@ -44,6 +45,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const items = user?.role === "admin" ? adminNav : employeeNav;
   const [pendingExtensions, setPendingExtensions] = useState(0);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
   const [blockDialog, setBlockDialog] = useState(false);
   const [blockedTasks, setBlockedTasks] = useState<string[]>([]);
 
@@ -60,6 +62,8 @@ export function AppSidebar() {
     const tasks = await getTasks();
     const pending = tasks.filter(t => t.extensionRequest && t.extensionRequest.status === "pending").length;
     setPendingExtensions(pending);
+    const approvals = tasks.filter(t => t.status === "pending-approval").length;
+    setPendingApprovals(approvals);
   };
 
   const handleLogout = async () => {
@@ -101,6 +105,11 @@ export function AppSidebar() {
                       {item.url === "/extensions" && pendingExtensions > 0 && (
                         <Badge variant="destructive" className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs">
                           {pendingExtensions}
+                        </Badge>
+                      )}
+                      {item.url === "/approvals" && pendingApprovals > 0 && (
+                        <Badge variant="destructive" className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs">
+                          {pendingApprovals}
                         </Badge>
                       )}
                     </NavLink>

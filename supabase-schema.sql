@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   expected_time INTEGER NOT NULL,
   deadline DATE NOT NULL,
   priority TEXT NOT NULL CHECK (priority IN ('low', 'medium', 'high')),
-  status TEXT NOT NULL CHECK (status IN ('pending', 'in-progress', 'completed')),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'in-progress', 'completed', 'pending-approval')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   started_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,

@@ -12,6 +12,7 @@ import EmployeeDashboard from "@/pages/EmployeeDashboard";
 import EmployeeManagement from "@/pages/EmployeeManagement";
 import EmployeePerformance from "@/pages/EmployeePerformance";
 import TaskManagement from "@/pages/TaskManagement";
+import TaskApprovalsPage from "@/pages/TaskApprovalsPage";
 import ExtensionRequests from "@/pages/ExtensionRequests";
 import AttendancePage from "@/pages/AttendancePage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/dashboard" element={<DashboardRouter />} />
                 <Route path="/tasks" element={<TaskManagement />} />
                 <Route path="/sales" element={<SalesPage />} />
+                <Route path="/approvals" element={<TaskApprovalsPage />} />
                 <Route path="/service" element={<ServicePage />} />
                 <Route path="/inventory" element={<InventoryWrapper />} />
                 <Route path="/extensions" element={<ExtensionRequests />} />
